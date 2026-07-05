@@ -8,7 +8,7 @@ Prompt/Skill 收藏庫：會員登入前台瀏覽、搜尋、篩選、收藏 Pro
 - 認證：jsonwebtoken、bcrypt
 - API 文件：swagger-jsdoc + swagger-ui-express + `@scalar/express-api-reference`
 - 測試：Vitest（`npm test` 對應 `vitest run`）
-- 資料持久化：先以 in-memory repository 模擬，`src/database/entities`、`src/database/migrations` 保留給未來導入 TypeORM + PostgreSQL 使用
+- 資料持久化：Prisma + SQLite（本機 `dev.db`），`src/database/repositories` 包裝 `PrismaClient`，未來可視需要換成 PostgreSQL
 
 ## 專案資料夾架構
 
@@ -31,22 +31,13 @@ prompt-alchemy-server/
 │   │   └── errorHandler.js              # 集中式錯誤處理（4 參數 middleware，掛在最後）
 │   │
 │   ├── database/
-│   │   ├── entities/
-│   │   │   ├── User.entity.js           # id, name, email, passwordHash, role
-│   │   │   ├── Category.entity.js       # id, name, description
-│   │   │   ├── SkillItem.entity.js      # id, title, categoryId, tags, content, useCase, exampleInput, createdAt, updatedAt
-│   │   │   └── Favorite.entity.js       # userId, skillId, createdAt
-│   │   ├── migrations/
-│   │   │   └── README.md                # 佔位說明：未來 TypeORM + PostgreSQL migration 放這裡
-│   │   ├── repositories/
-│   │   │   ├── base/InMemoryRepository.js   # 共用 CRUD 基底（Map 儲存）
-│   │   │   ├── user.repository.js           # + findByEmail
-│   │   │   ├── category.repository.js       # + hasRelatedSkills(categoryId)
-│   │   │   ├── skillItem.repository.js      # + search({keyword, categoryId})
-│   │   │   ├── favorite.repository.js       # 複合鍵(userId+skillId) + existsFavorite/findByUser
-│   │   │   └── index.js                     # 匯出各 repository singleton + resetForTests()
-│   │   └── seed/
-│   │       └── seedData.js              # 1 admin + 1 member 帳號、幾筆 category/skill 初始資料
+│   │   ├── prisma.js                    # PrismaClient 單例，供所有 repository 共用
+│   │   └── repositories/
+│   │       ├── user.repository.js           # + findByEmail
+│   │       ├── category.repository.js       # + hasRelatedSkills(categoryId)
+│   │       ├── skillItem.repository.js      # + search({keyword, categoryId})，tags 於此層做 JSON 轉換
+│   │       ├── favorite.repository.js       # 複合鍵(userId+skillId) + existsFavorite/findByUser
+│   │       └── index.js                     # 匯出各 repository singleton + resetForTests()
 │   │
 │   ├── services/
 │   │   ├── auth.service.js              # login / getMe
