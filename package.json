@@ -1,7 +1,7 @@
 {
   "name": "prompt-alchemy-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Prompt 鍊金坊 Prompt Alchemy — Prompt/Skill 收藏庫後端 API server",
   "main": "server.js",
   "directories": {
     "doc": "docs",

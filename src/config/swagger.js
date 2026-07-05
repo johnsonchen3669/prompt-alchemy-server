@@ -5,9 +5,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Prompt/Skill 收藏庫 API',
+      title: 'Prompt 鍊金坊 Prompt Alchemy API',
       version: '1.0.0',
-      description: 'Prompt/Skill 收藏庫後端 API 文件',
+      description: 'Prompt 鍊金坊 Prompt Alchemy — Prompt/Skill 收藏庫後端 API 文件',
     },
     servers: [{ url: `http://localhost:${port}` }],
     security: [{ bearerAuth: [] }],

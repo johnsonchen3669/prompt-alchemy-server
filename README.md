@@ -1,6 +1,6 @@
-# Prompt/Skill 收藏庫 — Server
+# Prompt 鍊金坊 Prompt Alchemy — Server
 
-會員登入前台瀏覽、搜尋、篩選、收藏 Prompt/Skill 資料；管理者登入後台管理類別與資料的後端 API server。
+Prompt/Skill 收藏庫：會員登入前台瀏覽、搜尋、篩選、收藏 Prompt/Skill 資料；管理者登入後台管理類別與資料的後端 API server。
 
 ## 技術棧
 
