@@ -10,8 +10,11 @@
   "scripts": {
     "start": "node server.js",
     "test": "vitest run",
-    "db:migrate": "node src/database/migrate.js",
-    "swagger": "node src/config/swagger.js"
+    "swagger": "node src/config/swagger.js",
+    "dev:init": "node src/database/migrate.js",
+    "dev:seed": "node src/database/seed.js",
+    "dev:setup": "npm run dev:init && npm run dev:seed",
+    "dev:clear": "node -e \"require('fs').rmSync('.pglite-data', { recursive: true, force: true })\""
   },
   "keywords": [],
   "author": "",

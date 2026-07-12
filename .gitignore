@@ -1,3 +1,4 @@
 node_modules/
 .env
+.pglite-data
 .claude/settings.local.json
