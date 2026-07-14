@@ -1,13 +1,36 @@
-const fs = require('fs')
 const path = require('path')
+const { URL } = require('url');
 const { databaseUrl, nodeEnv } = require("../config/env");
-const { Pool } = require('pg');
 
 // 快取：第一次呼叫 query()/exec() 時才決定要用哪個後端、建立連線，
 // 之後的呼叫都重複用同一個，不會每次都重新判斷、重新連線。
 let backendPromise
 
+function maskPassword(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.password) parsed.password = '****';
+    return parsed.toString();
+  } catch {
+    return '(無法解析 DATABASE_URL)';
+  }
+}
+
 function createBackend() {
+  if (databaseUrl) {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: databaseUrl })
+    pool.on('error', (err) => {
+      console.error('[DB] 閒置連線發生未預期錯誤', err);
+    });
+    console.log(`[DB] NODE_ENV=${nodeEnv} → 連線目標 ${maskPassword(databaseUrl)}`);
+    return {
+      query: (text, params) => pool.query(text, params),
+      exec: (sql) => pool.query(sql),
+    }
+  }
+
+  const fs = require('fs')
   const { PGlite } = require('@electric-sql/pglite');
   const dataDir = path.resolve(__dirname, '../../.pglite-data', nodeEnv);
   // PGlite 不會自動連父目錄一起建立，第一次啟動時 .pglite-data 資料夾還不存在會直接報錯，
@@ -20,7 +43,6 @@ function createBackend() {
     exec: (sql) => pglite.exec(sql)
   }
 }
-
 function getBackend() {
   if (!backendPromise)
     backendPromise = createBackend();
