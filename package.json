@@ -8,9 +8,10 @@
     "test": "tests"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "NODE_ENV=production node server.js",
     "test": "vitest run",
     "swagger": "node src/config/swagger.js",
+    "dev": "NODE_ENV=development node --watch server.js",
     "dev:init": "node src/database/migrate.js",
     "dev:seed": "node src/database/seed.js",
     "dev:setup": "npm run dev:init && npm run dev:seed",
