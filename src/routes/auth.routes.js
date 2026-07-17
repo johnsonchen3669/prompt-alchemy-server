@@ -24,6 +24,18 @@ router.post(
          }
        }
   } */
+  /* #swagger.responses[201] = {
+       description: '註冊成功',
+       schema: {
+         status: 'success',
+         message: '註冊成功',
+         data: { id: 1, email: 'member@example.com', name: 'member' }
+       }
+  } */
+  /* #swagger.responses[400] = {
+       description: '欄位缺漏或 email 已被使用',
+       schema: { status: 'false', message: '請填寫 email、name 與 password' }
+  } */
   register
 )
 
@@ -46,12 +58,28 @@ router.post(
          }
        }
   } */
+  /* #swagger.responses[200] = {
+       description: '登入成功',
+       schema: { status: 'success', token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }
+  } */
+  /* #swagger.responses[401] = {
+       description: 'email 或密碼錯誤',
+       schema: { status: 'error', message: 'email 或密碼錯誤' }
+  } */
   login
 )
 router.post('/logout',
   /* #swagger.tags = ['Auth']
      #swagger.description = '登出'
      #swagger.security = [{ "bearerAuth": [] }]*/
+  /* #swagger.responses[200] = {
+       description: '登出成功',
+       schema: { status: 'success', message: '已登出' }
+  } */
+  /* #swagger.responses[401] = {
+       description: '未帶 token 或 token 失效',
+       schema: { status: 'false', message: '請先登入' }
+  } */
   vertfyToken,
   logout)
 
@@ -59,6 +87,18 @@ router.get('/me',
   /* #swagger.tags = ['Auth']
      #swagger.description = '取得目前登入者資訊'
      #swagger.security = [{ "bearerAuth": [] }]*/
+  /* #swagger.responses[200] = {
+       description: '取得成功',
+       schema: { status: 'success', user: { id: 1, email: 'member@example.com', name: 'member' } }
+  } */
+  /* #swagger.responses[401] = {
+       description: '未帶 token 或 token 失效',
+       schema: { status: 'false', message: '請先登入' }
+  } */
+  /* #swagger.responses[404] = {
+       description: '找不到使用者',
+       schema: { status: false, message: '未找到符合的使用者' }
+  } */
   vertfyToken,
   getUser)
 

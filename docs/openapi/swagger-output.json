@@ -16,10 +16,49 @@
         "tags": [
           "Health"
         ],
+        "summary": "確認服務存活狀態",
         "description": "確認服務正常運作",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "服務正常運作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2026-07-17T12:00:00.000Z"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2026-07-17T12:00:00.000Z"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -122,10 +161,120 @@
         "description": "會員註冊",
         "responses": {
           "201": {
-            "description": "Created"
+            "description": "註冊成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "註冊成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "number",
+                          "example": 1
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "member@example.com"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "member"
+                        }
+                      }
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "註冊成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "number",
+                          "example": 1
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "member@example.com"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "member"
+                        }
+                      }
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "欄位缺漏或 email 已被使用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請填寫 email、name 與 password"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請填寫 email、name 與 password"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -170,10 +319,86 @@
         "description": "會員 / 管理者登入",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "登入成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "token": {
+                      "type": "string",
+                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "token": {
+                      "type": "string",
+                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "email 或密碼錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "email 或密碼錯誤"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "email 或密碼錯誤"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -221,10 +446,86 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "登出成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "已登出"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "已登出"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "未帶 token 或 token 失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -251,13 +552,153 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "取得成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "number",
+                          "example": 1
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "member@example.com"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "member"
+                        }
+                      }
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "number",
+                          "example": 1
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "member@example.com"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "member"
+                        }
+                      }
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "未帶 token 或 token 失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           },
           "404": {
-            "description": "Not Found"
+            "description": "找不到使用者",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "未找到符合的使用者"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "未找到符合的使用者"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
