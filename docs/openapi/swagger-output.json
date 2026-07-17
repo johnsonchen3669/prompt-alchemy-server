@@ -24,6 +24,40 @@
         }
       }
     },
+    "/utility/upload": {
+      "post": {
+        "tags": [
+          "Utility"
+        ],
+        "summary": "上傳檔案至 GCP Bucket",
+        "description": "提供檔案上傳功能，並回傳公開可存取的 URL。",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "要上傳的檔案"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/register": {
       "post": {
         "tags": [
