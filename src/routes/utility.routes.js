@@ -12,48 +12,43 @@ const upload = multer({
   }
 });
 
-/**
- * @openapi
- * /utility/upload:
- *   post:
- *     summary: 上傳檔案至 GCP Bucket
- *     description: 提供檔案上傳功能，並回傳公開可存取的 URL。
- *     tags:
- *       - Utility
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: 要上傳的檔案
- *     responses:
- *       200:
- *         description: 檔案上傳成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 message:
- *                   type: string
- *                   example: 檔案上傳成功
- *                 data:
- *                   type: object
- *                   properties:
- *                     url:
- *                       type: string
- *                       example: https://storage.googleapis.com/my-bucket/123456789-1234.png
- *       400:
- *         description: 上傳失敗 (例如未帶入檔案)
- */
-router.post('/upload', upload.single('file'), utilityController.uploadFile);
+router.post('/upload', upload.single('file'), (req, res, next) => {
+  /*
+    #swagger.tags = ['Utility']
+    #swagger.summary = '上傳檔案至 GCP Bucket'
+    #swagger.description = '提供檔案上傳功能，並回傳公開可存取的 URL。'
+    #swagger.requestBody = {
+      required: true,
+      content: {
+        "multipart/form-data": {
+          schema: {
+            type: "object",
+            properties: {
+              file: {
+                type: "string",
+                format: "binary",
+                description: "要上傳的檔案"
+              }
+            }
+          }
+        }
+      }
+    }
+    #swagger.responses[200] = {
+      description: '檔案上傳成功',
+      schema: {
+        status: 'success',
+        message: '檔案上傳成功',
+        data: {
+          url: 'https://storage.googleapis.com/my-bucket/123456789-1234.png'
+        }
+      }
+    }
+    #swagger.responses[400] = {
+      description: '上傳失敗 (例如未帶入檔案)'
+    }
+  */
+  next();
+}, utilityController.uploadFile);
 
 module.exports = router;
