@@ -1,4 +1,10 @@
 node_modules/
 .env
+<<<<<<< HEAD
 .claude/settings.local.json
 .agents
+=======
+.env.production
+.pglite-data
+.claude/settings.local.json
+>>>>>>> 36a7dce84610946da9b13f55ca02d012b59297b1

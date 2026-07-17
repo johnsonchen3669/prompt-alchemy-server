@@ -1,4 +1,3 @@
-
 /**
  * 確認服務正常
  * @param {import('express').Request} req

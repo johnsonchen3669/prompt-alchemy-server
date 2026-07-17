@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prompt-alchemy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: prompt_alchemy
+      POSTGRES_PASSWORD: prompt_alchemy
+      POSTGRES_DB: prompt_alchemy_dev
+    ports:
+      - '5433:5432'
+    volumes:
+      - prompt_alchemy_pg_data:/var/lib/postgresql/data
+      - ./src/database/docker-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U prompt_alchemy']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  prompt_alchemy_pg_data:

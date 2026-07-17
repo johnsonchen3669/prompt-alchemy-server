@@ -8,23 +8,38 @@
     "test": "tests"
   },
   "scripts": {
-    "start": "node server.js",
-    "test": "vitest run"
+    "start": "NODE_ENV=production node server.js",
+    "test": "vitest run",
+    "swagger": "node src/config/swagger.js",
+    "dev": "NODE_ENV=development node --watch server.js",
+    "dev:init": "node src/database/migrate.js",
+    "dev:seed": "node src/database/seed.js",
+    "dev:setup": "npm run dev:init && npm run dev:seed",
+    "dev:clear": "node -e \"require('fs').rmSync('.pglite-data', { recursive: true, force: true })\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+<<<<<<< HEAD
     "@google-cloud/storage": "^7.21.0",
+=======
+    "@electric-sql/pglite": "^0.5.4",
+>>>>>>> 36a7dce84610946da9b13f55ca02d012b59297b1
     "@scalar/express-api-reference": "^0.10.8",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+<<<<<<< HEAD
     "multer": "^2.2.0",
     "swagger-jsdoc": "^6.3.0",
+=======
+    "pg": "^8.22.0",
+    "swagger-autogen": "^2.23.7",
+>>>>>>> 36a7dce84610946da9b13f55ca02d012b59297b1
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
