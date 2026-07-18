@@ -2,6 +2,7 @@ node_modules/
 .env
 .claude/settings.local.json
 .agents
+.env.development
 .env.production
 .pglite-data
 .claude/settings.local.json

@@ -8,10 +8,10 @@
     "test": "tests"
   },
   "scripts": {
-    "start": "NODE_ENV=production node server.js",
+    "start": "cross-env NODE_ENV=production node server.js",
     "test": "vitest run",
     "swagger": "node src/config/swagger.js",
-    "dev": "NODE_ENV=development node --watch server.js",
+    "dev": "cross-env NODE_ENV=development node --watch server.js",
     "dev:init": "node src/database/migrate.js",
     "dev:seed": "node src/database/seed.js",
     "dev:setup": "npm run dev:init && npm run dev:seed",
@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "cross-env": "^10.1.0",
     "vitest": "^4.1.9"
   }
 }
