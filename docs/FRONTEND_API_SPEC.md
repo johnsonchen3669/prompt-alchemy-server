@@ -1,6 +1,6 @@
 # 前端 & 後台全站 API 需求與規格文件 (Prompt Alchemy API Specification)
 
-本文件完整整理前端前台 (`Prompt-Alchemy`) 與後台管理介面 (`/admin`) 所需的所有 API 規格，提供給後端工程師作為系統設計、開發與對接參考。
+本文件完整整理前端前台 (`Prompt-Alchemy`) 與後台管理介面 (`/admin`) 所需的所有 API 規格，提供給前後端工程師作為系統設計、開發與對接參考。
 
 ---
 
@@ -19,11 +19,14 @@
 ## 1. 通用規範 (General Specs)
 
 ### Base URL
-* **開發環境**：`http://localhost:3000`
+* **開發環境**：`http://localhost:3000` (或可透過 `.env` 的 `VITE_API_BASE_URL` 設定)
 * **正式環境**：`https://api.promptalchemy.com`
 
-### Request Header
-* 需要驗證的 API 必須帶上 Bearer Token：
+### HTTP Client & Request Header (Axios)
+* 前端使用 Axios 客戶端（`src/api/apiClient.js`），配有 Request 與 Response 攔截器：
+  * **Request 攔截器**：若 `localStorage` 存在 `token`，自動注入 Authorization Header。
+  * **Response 攔截器**：自動解包 `response.data`，並統一捕獲 4xx/5xx 及網路連線異常。
+* 需要驗證的 API Header：
   ```http
   Authorization: Bearer <JWT_TOKEN>
   Content-Type: application/json
@@ -123,6 +126,21 @@
 
 ## 3. 前台 Prompt / Skill 模組
 
+### 範例輸出區塊格式說明 (exampleOutput)
+Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Block Array)**：
+```json
+[
+  { "type": "text", "data": { "context": "輸出文字內容..." }, "seq": 0 },
+  { "type": "image", "data": { "context": "https://example.com/image.png", "alt": "圖片說明", "caption": "圖說" }, "seq": 1 },
+  { "type": "video", "data": { "context": "https://example.com/demo.mp4", "alt": "影片說明", "caption": "圖說" }, "seq": 2 },
+  { "type": "html", "data": { "context": "https://example.com/demo.html", "alt": "HTML 說明", "caption": "圖說" }, "seq": 3 }
+]
+```
+* `type`: `"text"` | `"image"` | `"video"` | `"html"`
+* `data.context`: 必填。`text` 為純文字；`image` / `video` / `html` 為目標網址。
+* `data.alt` / `data.caption`: 選填，僅 `image` / `video` / `html` 包含。
+* `seq`: 排序序號 (從 0 開始整數)。
+
 ### 3.1 取得上架中的 Prompt 列表
 * **Endpoint**: `GET /prompts`
 * **Auth**: 無需 Token
@@ -145,10 +163,18 @@
         "promptContent": "請你扮演資深後端工程師...",
         "useCase": "程式碼審查",
         "exampleInput": "router.post('/login', ...)",
-        "exampleOutput": {
-          "outputText": "建議修改程式碼如下：...",
-          "outputImages": []
-        },
+        "exampleOutput": [
+          {
+            "type": "text",
+            "data": { "context": "建議修改程式碼如下：..." },
+            "seq": 0
+          },
+          {
+            "type": "image",
+            "data": { "context": "https://example.com/result.png", "alt": "架構圖", "caption": "輸出範例圖" },
+            "seq": 1
+          }
+        ],
         "categoryId": "param-cat-backend",
         "category": "後端開發",
         "tags": ["Node.js", "Express", "Security"],
@@ -157,6 +183,7 @@
         "favoriteCount": 42,
         "isNew": true,
         "isHot": true,
+        "isActive": true,
         "createdAt": "2026-06-25T08:00:00Z",
         "updatedAt": "2026-06-25T08:00:00Z"
       }
@@ -181,14 +208,19 @@
       "promptContent": "請你扮演資深後端工程師...",
       "useCase": "程式碼審查",
       "exampleInput": "router.post('/login')",
-      "exampleOutput": {
-        "outputText": "說明...",
-        "outputImages": []
-      },
+      "exampleOutput": [
+        {
+          "type": "text",
+          "data": { "context": "詳細說明..." },
+          "seq": 0
+        }
+      ],
+      "categoryId": "param-cat-backend",
       "category": "後端開發",
       "tags": ["Node.js", "Express"],
       "copyCount": 16,
       "favoriteCount": 43,
+      "isActive": true,
       "createdAt": "2026-06-25T08:00:00Z"
     }
   }
@@ -285,13 +317,16 @@
 
 ## 6. 後台 Prompt / Skill 管理模組 (Admin Skills)
 
-### 6.1 取得後台 Prompt 列表 (含停用/草稿)
+> **注意 (狀態說明)**：後台狀態已簡化為布林值 `isActive` (啟用 / 未啟用)，相容舊資料欄位 `is_active`。已移除原有的 `status` 欄位 ("draft" / "published" / "archived")。
+
+### 6.1 取得後台 Prompt 列表
 * **Endpoint**: `GET /admin/skills`
 * **Auth**: `Authorization: Bearer <admin_token>`
 * **Query Parameters (可選)**:
   * `keyword`: 關鍵字搜尋
-  * `category`: 分類 ID
-  * `isActive`: `true` | `false`
+  * `contentTypeId`: 資料類型 ID
+  * `categoryId`: 分類 ID
+  * `active`: `active` (僅看啟用) | `inactive` (僅看未啟用)
 * **Response (200 OK)**:
   ```json
   {
@@ -301,12 +336,21 @@
         "id": "prompt-uuid-0001",
         "title": "後端 API 審查",
         "intro": "簡介說明",
+        "contentTypeId": "ct-1",
         "categoryId": "cat-1",
         "tags": ["tag-1"],
+        "exampleOutput": [
+          {
+            "type": "text",
+            "data": { "context": "範例輸出文字" },
+            "seq": 0
+          }
+        ],
         "isActive": true,
         "copyCount": 15,
         "favoriteCount": 42,
-        "createdAt": "2026-06-25T08:00:00Z"
+        "createdAt": "2026-06-25T08:00:00Z",
+        "updatedAt": "2026-06-25T08:00:00Z"
       }
     ]
   }
@@ -319,15 +363,31 @@
   ```json
   {
     "title": "新 Prompt 標題",
+    "slug": "new-prompt-slug",
     "intro": "簡介說明",
+    "contentTypeId": "ct-1",
     "categoryId": "cat-1",
+    "modelType": ["model-1"],
     "tags": ["tag-1", "tag-2"],
     "promptContent": "Prompt 詳細內容...",
+    "useCase": "使用場景說明",
     "exampleInput": "範例輸入",
-    "exampleOutput": {
-      "outputText": "範例輸出",
-      "outputImages": []
-    },
+    "exampleOutput": [
+      {
+        "type": "text",
+        "data": { "context": "範例輸出文字" },
+        "seq": 0
+      },
+      {
+        "type": "image",
+        "data": {
+          "context": "https://example.com/demo.png",
+          "alt": "示意圖",
+          "caption": "範例圖說"
+        },
+        "seq": 1
+      }
+    ],
     "isActive": true
   }
   ```
@@ -336,7 +396,7 @@
 ### 6.3 修改 Prompt
 * **Endpoint**: `PUT /admin/skills/:id`
 * **Auth**: `Authorization: Bearer <admin_token>`
-* **Request Body**: (同新增欄位)
+* **Request Body**: (同新增欄位，支援部分或完整更新)
 
 ### 6.4 切換 Prompt 啟用/停用狀態
 * **Endpoint**: `PATCH /admin/skills/:id/active`
@@ -345,6 +405,13 @@
   ```json
   {
     "isActive": false
+  }
+  ```
+* **Response (200 OK)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Prompt 狀態已更新"
   }
   ```
 
@@ -367,7 +434,7 @@
       {
         "id": "param-1",
         "name": "程式開發",
-        "type": "category", // "category" | "tag" | "model_type"
+        "type": "category", // "category" | "tag" | "model" | "content_type" | "role"
         "slug": "dev",
         "sortOrder": 1,
         "isActive": true
@@ -377,8 +444,8 @@
   ```
 
 ### 7.2 新增 / 修改 / 刪除參數
-* **新增**: `POST /admin/parameters`
-* **修改**: `PUT /admin/parameters/:id`
+* **新增**: `POST /admin/parameters` (`{ "name": "新分類", "type": "category", "description": "", "isActive": true }`)
+* **修改**: `PUT /admin/parameters/:id` (`{ "name": "新名稱", "description": "說明", "isActive": true }`)
 * **切換狀態**: `PATCH /admin/parameters/:id/active` (`{ "isActive": true }`)
 * **刪除**: `DELETE /admin/parameters/:id`
 
@@ -409,6 +476,6 @@
 
 ### 8.2 新增 / 修改 / 停用會員
 * **新增會員**: `POST /admin/users`
-* **修改會員資料**: `PUT /admin/users/:id` (修改 name, role, password)
+* **修改會員資料**: `PUT /admin/users/:id` (修改 name, role, email, isActive)
 * **切換啟用狀態**: `PATCH /admin/users/:id/active` (`{ "isActive": false }`)
 * **刪除會員**: `DELETE /admin/users/:id`
