@@ -20,25 +20,54 @@ prompt-alchemy-server/
 │   │   └── swagger.js                   # swagger-autogen 產生器：掃描 app.js 路由，輸出 docs/openapi/swagger-output.json
 │   │
 │   ├── middlewares/
-│   │   └── authenticate.js              # vertfyToken：驗證 Authorization Bearer JWT，設定 req.user
+│   │   └── authenticate.js              # vertfyToken：驗證 Authorization Bearer JWT，設定 req.user；isAdmin：檢查 req.user.role === 'admin'
 │   │
 │   ├── database/
 │   │   ├── db.js                        # 統一的 query(text, params)/exec(sql)，依 DATABASE_URL 切換 PGlite / pg.Pool
-│   │   ├── schema.sql                   # users 表手寫 DDL（id 為 UUID，DEFAULT gen_random_uuid()）
+│   │   ├── schema.sql                   # users、parameters、skill_item 三張表手寫 DDL（id 皆為 UUID，DEFAULT gen_random_uuid()）
 │   │   ├── migrate.js                   # 套用 schema.sql（npm run dev:init）
-│   │   ├── seed.js                      # 建立預設管理者帳號，已存在則略過（npm run dev:seed，冪等）
+│   │   ├── seed.js                      # 建立預設管理者帳號，已存在則略過（npm run dev:seed，冪等）；TODO：parameters 種子資料尚未補上
 │   │   └── repositories/
-│   │       └── user.repository.js       # createUser / findUserByEmail / findUserById
+│   │       ├── user.repository.js       # createUser / findUserByEmail / findUserById / getUsers / updateUser
+│   │       ├── parameter.repository.js  # parameters 表的 CRUD 查詢
+│   │       └── prompt.repository.js     # skill_item 表的前台查詢 + 後台 CRUD 查詢
 │   │
-│   ├── services/                        # 尚未使用，目前商業邏輯直接寫在 controller 裡
+│   ├── services/
+│   │   ├── parameter.service.js         # 後台參數（分類/標籤/模型...）業務邏輯
+│   │   ├── prompt.service.js            # Prompt/Skill 業務邏輯（含前台/後台共用的欄位轉換）
+│   │   └── upload.service.js            # 檔案上傳至 GCP Bucket
+│   │
+│   ├── scripts/
+│   │   └── updateAdmin.js               # 手動建立/重設管理者帳號密碼與 role 的一次性腳本
 │   │
 │   ├── controllers/
 │   │   ├── health.controller.js
-│   │   └── auth.controller.js           # register / login / logout / getUser
+│   │   ├── auth.controller.js           # register / login / logout / getUser
+│   │   ├── utility.controller.js        # 檔案上傳（GCP Bucket）
+│   │   ├── prompt.controller.js         # 前台 Prompt 列表 / 詳情 / 複製次數累加
+│   │   ├── category.controller.js       # TODO：前台 category（尚未實作，空殼）
+│   │   ├── favorite.controller.js       # TODO：收藏功能（尚未實作，空殼）
+│   │   ├── skill.controller.js          # TODO：前台 skill（尚未實作，空殼；功能已由 prompt.controller 涵蓋，待確認是否仍需要）
+│   │   └── admin/
+│   │       ├── parameter.controller.js  # 後台參數管理（新增/修改/刪除）
+│   │       ├── skill.controller.js      # 後台 Prompt/Skill 管理（列表/詳情/新增/修改）
+│   │       ├── user.controller.js       # 後台會員管理（列表/修改）
+│   │       └── category.controller.js   # TODO：尚未實作，空殼（分類已併入 admin/parameter 用 type=category 管理，這支可能會廢除）
 │   │
 │   └── routes/
+│       ├── index.js                     # 統一掛載所有前台/後台路由，app.js 只 require 這一個入口
 │       ├── health.routes.js
-│       └── auth.routes.js               # /register、/login、/logout（需登入）、/me（需登入）
+│       ├── auth.routes.js               # /register、/login、/logout（需登入）、/me（需登入）
+│       ├── utility.routes.js            # /upload
+│       ├── prompt.routes.js             # /、/:id、/:id/copy
+│       ├── category.routes.js           # TODO：尚未掛載任何 endpoint
+│       ├── favorite.routes.js           # TODO：尚未掛載任何 endpoint
+│       ├── skill.routes.js              # TODO：尚未掛載任何 endpoint
+│       └── admin/
+│           ├── parameter.routes.js      # /、/:id（皆需 admin）
+│           ├── skill.routes.js          # /、/:id（皆需 admin）
+│           ├── user.routes.js           # /、/:id（皆需 admin）
+│           └── category.routes.js       # TODO：尚未掛載任何 endpoint
 │
 ├── app.js                   # 組裝 express app（cors/json/routes/API 文件），export app，不呼叫 listen
 ├── server.js                # require('./config/env') → require('./app') → app.listen(PORT)
@@ -49,8 +78,9 @@ prompt-alchemy-server/
 ├── docker-compose.yml       # 可選：想切換成本地 Docker PostgreSQL 才需要，見下方說明
 │
 ├── docs/
-│   ├── plan.md              # PRD（產品目標、角色權限、API 規格、錯誤處理、邊界情境）
-│   ├── dev-plan.md          # 資料庫手把手實作教學（PGlite 為本地預設，切換 Docker/遠端 PostgreSQL 的步驟）
+│   ├── plan.md                   # PRD（產品目標、角色權限、API 規格、錯誤處理、邊界情境）
+│   ├── dev-plan.md               # 資料庫手把手實作教學 + 端點對應表（MVP / 加分功能分層）
+│   ├── FRONTEND_API_SPEC.md      # 前端提供的完整 API 需求規格，加分功能的 request/response 範例以此為準
 │   └── openapi/
 │       ├── components.yaml       # 早期手寫的 schema 元件草稿，目前 swagger-autogen 沒有使用這份
 │       └── swagger-output.json   # swagger-autogen 產生的 OpenAPI 3.0 文件快照（npm run swagger 重新產生）
@@ -58,47 +88,59 @@ prompt-alchemy-server/
 └── package.json
 ```
 
-> 目前只完成 `health`、`auth`（register/login/logout/me）這條線，`categories`/`skills`/`favorites`/`admin` 相關的 service、controller、route 都還沒開始。
+> `health`、`auth`、前台 `prompts`、`utility/upload`、後台 `admin/parameters`、`admin/skills`、`admin/users` 已完成並掛載（部分端點還缺規格要求的動作，見下表）。前台 `category`/`favorite`/`skill` 與後台 `admin/category` 目前只是空殼 route/controller，尚未掛載任何 endpoint。
 
 ## API 路由
 
-已完成的打勾（✅），還沒做的留空。
+已完成的打勾（✅），「半」表示有做但跟規格的 method/行為不完全一致（見說明欄），「軟」表示行為跟規格不完全一致（同樣見說明欄），還沒做的留空。
 
-### Auth
+### MVP 功能
+
+[`docs/dev-plan.md`](docs/dev-plan.md)「MVP 功能」表的路由（原始規劃範圍），每一列都列出，不論是否完成。
 
 | 完成 | Method | Path | 權限 | 說明 |
 |---|---|---|---|---|
-| ✅ | GET | `/health` | 公開 | 確認服務正常 |
-| ✅ | POST | `/auth/register` | 公開 | 會員註冊 |
+| ✅ | GET | `/health` | 公開 | 確認服務存活狀態 |
 | ✅ | POST | `/auth/login` | 公開 | 會員/管理者登入 |
 | ✅ | POST | `/auth/logout` | 已登入 | 登出 |
 | ✅ | GET | `/auth/me` | 已登入 | 取得目前登入者資訊 |
-
-### 前台資料
-
-| 完成 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|
 |  | GET | `/categories` | 已登入 | 取得類別列表 |
 |  | GET | `/skills` | 已登入 | 取得列表，支援 `keyword`、`categoryId` |
 |  | GET | `/skills/:id` | 已登入 | 取得單筆詳情 |
 |  | POST | `/favorites/:skillId` | 會員 | 收藏 |
 |  | DELETE | `/favorites/:skillId` | 會員 | 取消收藏 |
 |  | GET | `/me/favorites` | 會員 | 我的收藏 |
-
-### 後台管理
-
-| 完成 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|
 |  | POST | `/admin/categories` | 管理者 | 新增類別 |
 |  | PATCH | `/admin/categories/:id` | 管理者 | 編輯類別 |
 |  | DELETE | `/admin/categories/:id` | 管理者 | 刪除類別 |
-|  | POST | `/admin/skills` | 管理者 | 新增 Prompt/Skill |
-|  | PATCH | `/admin/skills/:id` | 管理者 | 編輯 Prompt/Skill |
+| ✅ | POST | `/admin/skills` | 管理者 | 新增 Prompt/Skill |
+| 半 | PATCH | `/admin/skills/:id` | 管理者 | 編輯 Prompt/Skill（實作是 `PUT /admin/skills/:id`，method 跟這裡的 PATCH 不同） |
 |  | DELETE | `/admin/skills/:id` | 管理者 | 刪除 Prompt/Skill |
+
+### 加分功能（已實作）
+
+併入自 [`docs/FRONTEND_API_SPEC.md`](docs/FRONTEND_API_SPEC.md) 的延伸範圍，這裡只列「已經在 route 檔裡實際掛載」的部分，完整清單見 `docs/dev-plan.md` 的「加分功能」表。
+
+| 完成 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|
+| ✅ | POST | `/auth/register` | 公開 | 會員註冊 |
+| ✅ | POST | `/utility/upload` | 公開 | 上傳檔案至 GCP Bucket |
+| ✅ | GET | `/prompts` | 公開 | 取得上架中的 Prompt 列表 |
+| ✅ | GET | `/prompts/:id` | 公開 | 取得單一 Prompt 詳細內容 |
+| ✅ | POST | `/prompts/:id/copy` | 公開 | 增加 Prompt 複製使用次數 |
+| ✅ | GET | `/admin/parameters` | 管理者 | 取得所有參數列表（分類/標籤/模型...），可用 `type` 篩選 |
+| ✅ | POST | `/admin/parameters` | 管理者 | 新增參數 |
+| ✅ | PUT | `/admin/parameters/:id` | 管理者 | 修改參數 |
+| 軟 | DELETE | `/admin/parameters/:id` | 管理者 | 規格要求真刪除，目前實作是軟刪除（設 `isActive: false`） |
+| ✅ | GET | `/admin/users` | 管理者 | 取得會員清單 |
+| ✅ | PUT | `/admin/users/:id` | 管理者 | 修改會員資料 |
+| ✅ | GET | `/admin/skills` | 管理者 | 取得後台 Prompt 列表 |
+| ✅ | GET | `/admin/skills/:id` | 管理者 | 取得單筆後台 Prompt |
+| ✅ | PUT | `/admin/skills/:id` | 管理者 | 修改 Prompt |
 
 ## 認證方式
 
-Authorization Header 帶 Bearer JWT（無 cookie）。`POST /auth/login` 成功回傳 `{ status: 'success', token }`；`vertfyToken` middleware（`src/middlewares/authenticate.js`）驗證 token 合法後，把解碼出來的內容設進 `req.user`（含 `userId`、`email`），`/auth/logout`、`/auth/me` 都掛了這個 middleware。登入失敗（帳號不存在或密碼錯）統一回同一則「email 或密碼錯誤」，不透露帳號是否存在。目前還沒有角色權限（member/admin）檢查用的 middleware。
+Authorization Header 帶 Bearer JWT（無 cookie）。`POST /auth/login` 成功回傳 `{ status: 'success', token }`；`vertfyToken` middleware（`src/middlewares/authenticate.js`）驗證 token 合法後，把解碼出來的內容設進 `req.user`（含 `userId`、`email`、`role`），`/auth/logout`、`/auth/me` 都掛了這個 middleware。登入失敗（帳號不存在或密碼錯）統一回同一則「email 或密碼錯誤」，不透露帳號是否存在。角色權限用同檔案裡的 `isAdmin` middleware（檢查 `req.user.role === 'admin'`），所有 `/admin/*` 路由都疊加 `vertfyToken` + `isAdmin`。
 
 ## 環境變數
 
