@@ -7,7 +7,8 @@ const router = express.Router();
 router.post(
   '/register',
   /* #swagger.tags = ['Auth']
-     #swagger.description = '會員註冊' */
+     #swagger.summary = '會員註冊'
+     #swagger.description = '使用 email、name 與 password 建立新的會員帳號。' */
   /* #swagger.requestBody = {
        required: true,
        content: {
@@ -42,7 +43,8 @@ router.post(
 router.post(
   '/login',
   /* #swagger.tags = ['Auth']
-     #swagger.description = '會員 / 管理者登入' */
+     #swagger.summary = '會員 / 管理者登入'
+     #swagger.description = '驗證 email 與 password，登入成功後回傳 JWT token。' */
   /* #swagger.requestBody = {
        required: true,
        content: {
@@ -70,7 +72,8 @@ router.post(
 )
 router.post('/logout',
   /* #swagger.tags = ['Auth']
-     #swagger.description = '登出'
+     #swagger.summary = '登出'
+     #swagger.description = '登出目前已登入的使用者。'
      #swagger.security = [{ "bearerAuth": [] }]*/
   /* #swagger.responses[200] = {
        description: '登出成功',
@@ -85,7 +88,8 @@ router.post('/logout',
 
 router.get('/me',
   /* #swagger.tags = ['Auth']
-     #swagger.description = '取得目前登入者資訊'
+     #swagger.summary = '取得目前登入者資訊'
+     #swagger.description = '依據 token 解析出的使用者 ID，回傳目前登入者的基本資料。'
      #swagger.security = [{ "bearerAuth": [] }]*/
   /* #swagger.responses[200] = {
        description: '取得成功',

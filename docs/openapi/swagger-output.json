@@ -63,102 +63,13 @@
         }
       }
     },
-    "/utility/upload": {
-      "post": {
-        "tags": [
-          "Utility"
-        ],
-        "summary": "上傳檔案至 GCP Bucket",
-        "description": "提供檔案上傳功能，並回傳公開可存取的 URL。",
-        "responses": {
-          "200": {
-            "description": "檔案上傳成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "檔案上傳成功"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "url": {
-                          "type": "string",
-                          "example": "https://storage.googleapis.com/my-bucket/123456789-1234.png"
-                        }
-                      }
-                    }
-                  },
-                  "xml": {
-                    "name": "main"
-                  }
-                }
-              },
-              "application/xml": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "檔案上傳成功"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "url": {
-                          "type": "string",
-                          "example": "https://storage.googleapis.com/my-bucket/123456789-1234.png"
-                        }
-                      }
-                    }
-                  },
-                  "xml": {
-                    "name": "main"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "上傳失敗 (例如未帶入檔案)"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary",
-                    "description": "要上傳的檔案"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/auth/register": {
       "post": {
         "tags": [
           "Auth"
         ],
-        "description": "會員註冊",
+        "summary": "會員註冊",
+        "description": "使用 email、name 與 password 建立新的會員帳號。",
         "responses": {
           "201": {
             "description": "註冊成功",
@@ -316,7 +227,8 @@
         "tags": [
           "Auth"
         ],
-        "description": "會員 / 管理者登入",
+        "summary": "會員 / 管理者登入",
+        "description": "驗證 email 與 password，登入成功後回傳 JWT token。",
         "responses": {
           "200": {
             "description": "登入成功",
@@ -434,7 +346,8 @@
         "tags": [
           "Auth"
         ],
-        "description": "登出",
+        "summary": "登出",
+        "description": "登出目前已登入的使用者。",
         "parameters": [
           {
             "name": "authorization",
@@ -540,7 +453,8 @@
         "tags": [
           "Auth"
         ],
-        "description": "取得目前登入者資訊",
+        "summary": "取得目前登入者資訊",
+        "description": "依據 token 解析出的使用者 ID，回傳目前登入者的基本資料。",
         "parameters": [
           {
             "name": "authorization",
@@ -708,138 +622,16 @@
         ]
       }
     },
-    "/admin/parameters/": {
-      "get": {
-        "tags": [
-          "Admin Parameters"
-        ],
-        "summary": "取得參數列表",
-        "description": "取得所有標籤與參數，可透過 type 進行過濾（例如 type=category）。",
-        "parameters": [
-          {
-            "name": "type",
-            "in": "query",
-            "description": "參數類型，允許的值：role, contentType, category, model, tag",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "description",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "content",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "message",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "data",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "name",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "isActive",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sortOrder",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "成功取得參數列表",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "取得參數列表成功"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "example": "755f3568-2333-4709-b916-582eae69e195"
-                          },
-                          "type": {
-                            "type": "string",
-                            "example": "category"
-                          },
-                          "name": {
-                            "type": "string",
-                            "example": "前端開發"
-                          },
-                          "description": {
-                            "type": "string",
-                            "example": "React / Vue / CSS / UI 相關"
-                          },
-                          "isActive": {
-                            "type": "boolean",
-                            "example": true
-                          },
-                          "sortOrder": {
-                            "type": "integer",
-                            "example": 1
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
+    "/utility/upload": {
       "post": {
         "tags": [
-          "Admin Parameters"
+          "Utility"
         ],
-        "summary": "新增參數",
-        "description": "在後台新增標籤或參數。",
+        "summary": "上傳檔案至 GCP Bucket",
+        "description": "提供檔案上傳功能，並回傳公開可存取的 URL。",
         "responses": {
-          "201": {
-            "description": "成功新增參數",
+          "200": {
+            "description": "檔案上傳成功",
             "content": {
               "application/json": {
                 "schema": {
@@ -851,250 +643,71 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "新增參數成功"
+                      "example": "檔案上傳成功"
                     },
                     "data": {
                       "type": "object",
                       "properties": {
-                        "id": {
+                        "url": {
                           "type": "string",
-                          "format": "uuid",
-                          "example": "755f3568-2333-4709-b916-582eae69e195"
-                        },
-                        "type": {
-                          "type": "string",
-                          "example": "category"
-                        },
-                        "name": {
-                          "type": "string",
-                          "example": "新分類"
-                        },
-                        "description": {
-                          "type": "string",
-                          "example": "分類說明"
-                        },
-                        "isActive": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "sortOrder": {
-                          "type": "integer",
-                          "example": 1
+                          "example": "https://storage.googleapis.com/my-bucket/123456789-1234.png"
                         }
                       }
                     }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "檔案上傳成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "example": "https://storage.googleapis.com/my-bucket/123456789-1234.png"
+                        }
+                      }
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "請求格式錯誤或必填欄位缺失"
+            "description": "上傳失敗 (例如未帶入檔案)"
           }
         },
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "type",
-                  "name"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "example": "category",
-                    "description": "參數類型"
-                  },
-                  "name": {
-                    "type": "string",
-                    "example": "新分類",
-                    "description": "參數名稱"
-                  },
-                  "description": {
-                    "type": "string",
-                    "example": "分類說明",
-                    "description": "詳細說明"
-                  },
-                  "isActive": {
-                    "type": "boolean",
-                    "example": true,
-                    "description": "是否啟用"
-                  },
-                  "sortOrder": {
-                    "type": "integer",
-                    "example": 1,
-                    "description": "排序權重"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/parameters/{id}": {
-      "put": {
-        "tags": [
-          "Admin Parameters"
-        ],
-        "summary": "修改參數",
-        "description": "修改現有參數的資料，支援部分更新（Partial Update）。",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "參數 ID (UUID)"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "成功修改參數",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "修改參數成功"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "format": "uuid",
-                          "example": "755f3568-2333-4709-b916-582eae69e195"
-                        },
-                        "type": {
-                          "type": "string",
-                          "example": "category"
-                        },
-                        "name": {
-                          "type": "string",
-                          "example": "修改後的名稱"
-                        },
-                        "description": {
-                          "type": "string",
-                          "example": "修改後的說明"
-                        },
-                        "isActive": {
-                          "type": "boolean",
-                          "example": false
-                        },
-                        "sortOrder": {
-                          "type": "integer",
-                          "example": 2
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "找不到參數"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": {
+                  "file": {
                     "type": "string",
-                    "example": "修改後的名稱",
-                    "description": "參數名稱"
-                  },
-                  "description": {
-                    "type": "string",
-                    "example": "修改後的說明",
-                    "description": "詳細說明"
-                  },
-                  "isActive": {
-                    "type": "boolean",
-                    "example": false,
-                    "description": "是否啟用"
-                  },
-                  "sortOrder": {
-                    "type": "integer",
-                    "example": 2,
-                    "description": "排序權重"
+                    "format": "binary",
+                    "description": "要上傳的檔案"
                   }
                 }
               }
             }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Admin Parameters"
-        ],
-        "summary": "刪除參數 (軟刪除)",
-        "description": "透過將參數設定為未啟用 (isActive: false) 來進行軟刪除。",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "參數 ID (UUID)"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "成功停用/軟刪除參數",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "參數已刪除/停用"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "format": "uuid",
-                          "example": "755f3568-2333-4709-b916-582eae69e195"
-                        },
-                        "isActive": {
-                          "type": "boolean",
-                          "example": false
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "找不到參數"
           }
         }
       }
@@ -1137,119 +750,7 @@
         ],
         "responses": {
           "200": {
-            "description": "成功取得 Prompt 列表",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "example": "d7c92002-1925-4c0a-8933-203a9a9ebf0b"
-                          },
-                          "title": {
-                            "type": "string",
-                            "example": "後端 API 審查"
-                          },
-                          "slug": {
-                            "type": "string",
-                            "example": "backend-api-review"
-                          },
-                          "intro": {
-                            "type": "string",
-                            "example": "檢查 Express / Next.js API 的錯誤處理、安全性與回傳結構。"
-                          },
-                          "contentTypeId": {
-                            "type": "string",
-                            "example": "62891464-fb7e-4295-b544-a3b78936722b"
-                          },
-                          "modelType": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
-                          },
-                          "promptContent": {
-                            "type": "string",
-                            "example": "請你扮演資深後端工程師..."
-                          },
-                          "useCase": {
-                            "type": "string",
-                            "example": "程式碼審查"
-                          },
-                          "exampleInput": {
-                            "type": "string",
-                            "example": "router.post(\"/login\", ...)"
-                          },
-                          "exampleOutput": {
-                            "type": "array",
-                            "items": {
-                              "type": "object"
-                            }
-                          },
-                          "categoryId": {
-                            "type": "string",
-                            "example": "5f40e0ac-86d0-4b9c-9573-351e9da96775"
-                          },
-                          "category": {
-                            "type": "string",
-                            "example": "後端開發"
-                          },
-                          "tags": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
-                          },
-                          "sourceUrl": {
-                            "type": "string",
-                            "example": "https://example.com"
-                          },
-                          "copyCount": {
-                            "type": "integer",
-                            "example": 125
-                          },
-                          "favoriteCount": {
-                            "type": "integer",
-                            "example": 32
-                          },
-                          "isNew": {
-                            "type": "boolean",
-                            "example": true
-                          },
-                          "isHot": {
-                            "type": "boolean",
-                            "example": true
-                          },
-                          "isActive": {
-                            "type": "boolean",
-                            "example": true
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time"
-                          },
-                          "updatedAt": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
+            "description": "OK"
           }
         }
       }
@@ -1388,6 +889,905 @@
           },
           "404": {
             "description": "找不到該 Prompt 或未上架"
+          }
+        }
+      }
+    },
+    "/admin/parameters/": {
+      "get": {
+        "tags": [
+          "Admin Parameters"
+        ],
+        "summary": "取得參數列表",
+        "description": "取得所有標籤與參數，可透過 type 進行過濾（例如 type=category）。",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "參數類型，允許的值：role, contentType, category, model, tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功取得參數列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "取得參數列表成功"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "755f3568-2333-4709-b916-582eae69e195"
+                          },
+                          "type": {
+                            "type": "string",
+                            "example": "category"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "前端開發"
+                          },
+                          "description": {
+                            "type": "string",
+                            "example": "React / Vue / CSS / UI 相關"
+                          },
+                          "isActive": {
+                            "type": "boolean",
+                            "example": true
+                          },
+                          "sortOrder": {
+                            "type": "integer",
+                            "example": 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Parameters"
+        ],
+        "summary": "新增參數",
+        "description": "在後台新增標籤或參數。",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "成功新增參數",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "新增參數成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "example": "755f3568-2333-4709-b916-582eae69e195"
+                        },
+                        "type": {
+                          "type": "string",
+                          "example": "category"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "新分類"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "分類說明"
+                        },
+                        "isActive": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "example": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "請求格式錯誤或必填欄位缺失"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "name"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "category",
+                    "description": "參數類型"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "新分類",
+                    "description": "參數名稱"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "分類說明",
+                    "description": "詳細說明"
+                  },
+                  "isActive": {
+                    "type": "boolean",
+                    "example": true,
+                    "description": "是否啟用"
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "example": 1,
+                    "description": "排序權重"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/parameters/{id}": {
+      "put": {
+        "tags": [
+          "Admin Parameters"
+        ],
+        "summary": "修改參數",
+        "description": "修改現有參數的資料，支援部分更新（Partial Update）。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "參數 ID (UUID)"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功修改參數",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "修改參數成功"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "example": "755f3568-2333-4709-b916-582eae69e195"
+                        },
+                        "type": {
+                          "type": "string",
+                          "example": "category"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "修改後的名稱"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "修改後的說明"
+                        },
+                        "isActive": {
+                          "type": "boolean",
+                          "example": false
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "example": 2
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "找不到參數"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "修改後的名稱",
+                    "description": "參數名稱"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "修改後的說明",
+                    "description": "詳細說明"
+                  },
+                  "isActive": {
+                    "type": "boolean",
+                    "example": false,
+                    "description": "是否啟用"
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "example": 2,
+                    "description": "排序權重"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin Parameters"
+        ],
+        "summary": "刪除參數 (軟刪除)",
+        "description": "透過將參數設定為未啟用 (isActive: false) 來進行軟刪除。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "參數 ID (UUID)"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功停用/軟刪除參數",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "參數已刪除/停用"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "example": "755f3568-2333-4709-b916-582eae69e195"
+                        },
+                        "isActive": {
+                          "type": "boolean",
+                          "example": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "找不到參數"
+          }
+        }
+      }
+    },
+    "/admin/users/": {
+      "get": {
+        "tags": [
+          "Admin Users"
+        ],
+        "summary": "取得會員清單",
+        "description": "後台管理者取得會員清單，可依角色篩選。",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "角色篩選，允許的值：member、admin",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功取得會員清單",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "user-uuid-0001"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "張小明"
+                          },
+                          "email": {
+                            "type": "string",
+                            "format": "email",
+                            "example": "user@example.com"
+                          },
+                          "role": {
+                            "type": "string",
+                            "example": "member"
+                          },
+                          "isActive": {
+                            "type": "boolean",
+                            "example": true
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/admin/users/{id}": {
+      "put": {
+        "tags": [
+          "Admin Users"
+        ],
+        "summary": "修改會員資訊",
+        "description": "後台管理者修改會員的 name、role、isActive 等資料。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "會員 ID (UUID)"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功修改會員資訊",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "example": "user-uuid-0001"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "修改後的名稱"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email",
+                          "example": "user@example.com"
+                        },
+                        "role": {
+                          "type": "string",
+                          "example": "member"
+                        },
+                        "isActive": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "找不到會員"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "修改後的名稱"
+                  },
+                  "role": {
+                    "type": "string",
+                    "example": "member"
+                  },
+                  "isActive": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/skills/": {
+      "get": {
+        "tags": [
+          "Admin Skills"
+        ],
+        "summary": "取得後台 Prompt 列表",
+        "description": "後台管理者瀏覽所有 Prompt/Skill，可搭配關鍵字、資料類型、分類或啟用狀態篩選。",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "關鍵字搜尋",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "contentTypeId",
+            "in": "query",
+            "description": "資料類型 ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "description": "分類 ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "啟用狀態篩選，允許的值：active（僅看啟用）、inactive（僅看未啟用）",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功取得後台 Prompt 列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "example": "d7c92002-1925-4c0a-8933-203a9a9ebf0b"
+                          },
+                          "title": {
+                            "type": "string",
+                            "example": "後端 API 審查"
+                          },
+                          "intro": {
+                            "type": "string",
+                            "example": "簡介說明"
+                          },
+                          "contentTypeId": {
+                            "type": "string",
+                            "example": "ct-1"
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "example": "cat-1"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "isActive": {
+                            "type": "boolean",
+                            "example": true
+                          },
+                          "copyCount": {
+                            "type": "integer",
+                            "example": 15
+                          },
+                          "favoriteCount": {
+                            "type": "integer",
+                            "example": 42
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Skills"
+        ],
+        "summary": "新增 Prompt",
+        "description": "後台管理者新增 Prompt/Skill。",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "成功新增 Prompt"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "slug",
+                  "contentTypeId",
+                  "categoryId",
+                  "promptContent"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "新 Prompt 標題"
+                  },
+                  "slug": {
+                    "type": "string",
+                    "example": "new-prompt-slug"
+                  },
+                  "intro": {
+                    "type": "string",
+                    "example": "簡介說明"
+                  },
+                  "contentTypeId": {
+                    "type": "string",
+                    "example": "ct-1"
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "example": "cat-1"
+                  },
+                  "modelType": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "promptContent": {
+                    "type": "string",
+                    "example": "Prompt 詳細內容..."
+                  },
+                  "useCase": {
+                    "type": "string",
+                    "example": "使用場景說明"
+                  },
+                  "exampleInput": {
+                    "type": "string",
+                    "example": "範例輸入"
+                  },
+                  "exampleOutput": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "isActive": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/skills/{id}": {
+      "get": {
+        "tags": [
+          "Admin Skills"
+        ],
+        "summary": "取得單筆後台 Prompt",
+        "description": "後台管理者取得單一 Prompt/Skill 的完整資料，供編輯表單使用。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Prompt ID (UUID)"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功取得 Prompt 詳情"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "找不到資料"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin Skills"
+        ],
+        "summary": "修改 Prompt",
+        "description": "修改現有 Prompt/Skill 的資料（同新增欄位，支援部分或完整更新）。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Prompt ID (UUID)"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功修改 Prompt"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "找不到資料"
           }
         }
       }
