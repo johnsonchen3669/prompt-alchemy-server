@@ -70,6 +70,7 @@ async function login(req, res, next) {
       {
         userId: user.id,
         email: user.email,
+        role: user.role,
       },
       JWT_SECRET,
       { expiresIn: '7d' },
