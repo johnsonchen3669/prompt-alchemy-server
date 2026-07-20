@@ -92,51 +92,80 @@ prompt-alchemy-server/
 
 ## API 路由
 
-已完成的打勾（✅），「半」表示有做但跟規格的 method/行為不完全一致（見說明欄），「軟」表示行為跟規格不完全一致（同樣見說明欄），還沒做的留空。
+### Health
 
-### MVP 功能
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+| ✅ | MVP | GET | `/health` | 公開 | 確認服務存活狀態 |
 
-[`docs/dev-plan.md`](docs/dev-plan.md)「MVP 功能」表的路由（原始規劃範圍），每一列都列出，不論是否完成。
+### Auth
 
-| 完成 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|
-| ✅ | GET | `/health` | 公開 | 確認服務存活狀態 |
-| ✅ | POST | `/auth/login` | 公開 | 會員/管理者登入 |
-| ✅ | POST | `/auth/logout` | 已登入 | 登出 |
-| ✅ | GET | `/auth/me` | 已登入 | 取得目前登入者資訊 |
-|  | GET | `/categories` | 已登入 | 取得類別列表 |
-|  | GET | `/skills` | 已登入 | 取得列表，支援 `keyword`、`categoryId` |
-|  | GET | `/skills/:id` | 已登入 | 取得單筆詳情 |
-|  | POST | `/favorites/:skillId` | 會員 | 收藏 |
-|  | DELETE | `/favorites/:skillId` | 會員 | 取消收藏 |
-|  | GET | `/me/favorites` | 會員 | 我的收藏 |
-|  | POST | `/admin/categories` | 管理者 | 新增類別 |
-|  | PATCH | `/admin/categories/:id` | 管理者 | 編輯類別 |
-|  | DELETE | `/admin/categories/:id` | 管理者 | 刪除類別 |
-| ✅ | POST | `/admin/skills` | 管理者 | 新增 Prompt/Skill |
-| 半 | PATCH | `/admin/skills/:id` | 管理者 | 編輯 Prompt/Skill（實作是 `PUT /admin/skills/:id`，method 跟這裡的 PATCH 不同） |
-|  | DELETE | `/admin/skills/:id` | 管理者 | 刪除 Prompt/Skill |
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+| ✅ | MVP | POST | `/auth/login` | 公開 | 會員/管理者登入 |
+| ✅ | MVP | POST | `/auth/logout` | 已登入 | 登出 |
+| ✅ | MVP | GET | `/auth/me` | 已登入 | 取得目前登入者資訊 |
+| ✅ | 加分 | POST | `/auth/register` | 公開 | 會員註冊 |
 
-### 加分功能（已實作）
+### 前台 Prompt/Skill
 
-併入自 [`docs/FRONTEND_API_SPEC.md`](docs/FRONTEND_API_SPEC.md) 的延伸範圍，這裡只列「已經在 route 檔裡實際掛載」的部分，完整清單見 `docs/dev-plan.md` 的「加分功能」表。
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+|  | MVP | GET | `/categories` | 已登入 | 取得類別列表 |
+|  | MVP | GET | `/skills` | 已登入 | 取得列表，支援 `keyword`、`categoryId` |
+|  | MVP | GET | `/skills/:id` | 已登入 | 取得單筆詳情 |
+| ✅ | 加分 | GET | `/prompts` | 公開 | 取得上架中的 Prompt 列表 |
+| ✅ | 加分 | GET | `/prompts/:id` | 公開 | 取得單一 Prompt 詳細內容 |
+| ✅ | 加分 | POST | `/prompts/:id/copy` | 公開 | 增加 Prompt 複製使用次數 |
 
-| 完成 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|
-| ✅ | POST | `/auth/register` | 公開 | 會員註冊 |
-| ✅ | POST | `/utility/upload` | 公開 | 上傳檔案至 GCP Bucket |
-| ✅ | GET | `/prompts` | 公開 | 取得上架中的 Prompt 列表 |
-| ✅ | GET | `/prompts/:id` | 公開 | 取得單一 Prompt 詳細內容 |
-| ✅ | POST | `/prompts/:id/copy` | 公開 | 增加 Prompt 複製使用次數 |
-| ✅ | GET | `/admin/parameters` | 管理者 | 取得所有參數列表（分類/標籤/模型...），可用 `type` 篩選 |
-| ✅ | POST | `/admin/parameters` | 管理者 | 新增參數 |
-| ✅ | PUT | `/admin/parameters/:id` | 管理者 | 修改參數 |
-| 軟 | DELETE | `/admin/parameters/:id` | 管理者 | 規格要求真刪除，目前實作是軟刪除（設 `isActive: false`） |
-| ✅ | GET | `/admin/users` | 管理者 | 取得會員清單 |
-| ✅ | PUT | `/admin/users/:id` | 管理者 | 修改會員資料 |
-| ✅ | GET | `/admin/skills` | 管理者 | 取得後台 Prompt 列表 |
-| ✅ | GET | `/admin/skills/:id` | 管理者 | 取得單筆後台 Prompt |
-| ✅ | PUT | `/admin/skills/:id` | 管理者 | 修改 Prompt |
+### Favorites
+
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+|  | MVP | POST | `/favorites/:skillId` | member | 收藏 |
+|  | MVP | DELETE | `/favorites/:skillId` | member | 取消收藏 |
+|  | MVP | GET | `/me/favorites` | member | 我的收藏 |
+
+### Utility
+
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+| ✅ | 加分 | POST | `/utility/upload` | 公開 | 上傳檔案至 GCP Bucket |
+
+### Admin Categories
+
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+|  | MVP | POST | `/admin/categories` | admin | 新增類別 |
+|  | MVP | PATCH | `/admin/categories/:id` | admin | 編輯類別 |
+|  | MVP | DELETE | `/admin/categories/:id` | admin | 刪除類別 |
+
+### Admin Skills
+
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+| ✅ | MVP | POST | `/admin/skills` | admin | 新增 Prompt/Skill |
+|  | MVP | PATCH | `/admin/skills/:id` | admin | 編輯 Prompt/Skill |
+|  | MVP | DELETE | `/admin/skills/:id` | admin | 刪除 Prompt/Skill |
+| ✅ | 加分 | GET | `/admin/skills` | admin | 取得後台 Prompt 列表 |
+| ✅ | 加分 | GET | `/admin/skills/:id` | admin | 取得單筆後台 Prompt |
+| ✅ | 加分 | PUT | `/admin/skills/:id` | admin | 修改 Prompt |
+
+### Admin Parameters
+
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+| ✅ | 加分 | GET | `/admin/parameters` | admin | 取得所有參數列表（分類/標籤/模型...），可用 `type` 篩選 |
+| ✅ | 加分 | POST | `/admin/parameters` | admin | 新增參數 |
+| ✅ | 加分 | PUT | `/admin/parameters/:id` | admin | 修改參數 |
+| ✅ | 加分 | DELETE | `/admin/parameters/:id` | admin | 刪除參數 |
+
+### Admin Users
+
+| 完成 | 類型 | Method | Path | 權限 | 說明 |
+|---|---|---|---|---|---|
+| ✅ | 加分 | GET | `/admin/users` | admin | 取得會員清單 |
+| ✅ | 加分 | PUT | `/admin/users/:id` | admin | 修改會員資料 |
 
 ## 認證方式
 
