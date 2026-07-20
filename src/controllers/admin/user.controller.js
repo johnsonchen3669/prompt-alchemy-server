@@ -1,4 +1,4 @@
-const userRepository = require('../database/repositories/user.repository');
+const userRepository = require('../../database/repositories/user.repository');
 
 class AdminUserController {
   /**

@@ -3,24 +3,13 @@ const cors = require('cors')
 const swaggerUi = require('swagger-ui-express');
 const { apiReference } = require('@scalar/express-api-reference');
 const swaggerDocument = require("./docs/openapi/swagger-output.json")
+const router = require("./src/routes/index")
 
 const app = express();
-const healthRouter = require('./src/routes/health.routes')
-const utilityRouter = require('./src/routes/utility.routes')
-const authRouter = require('./src/routes/auth.routes');
-const parameterRouter = require('./src/routes/parameter.routes');
-const promptRouter = require('./src/routes/prompt.routes');
 
 app.use(cors())
 app.use(express.json())
-
-app.use('/health', healthRouter)
-app.use('/utility', utilityRouter)
-app.use('/auth', authRouter)
-app.use('/admin/parameters', parameterRouter)
-app.use('/admin/users', require('./src/routes/admin.user.routes'))
-app.use('/admin/skills', require('./src/routes/admin.skill.routes'))
-app.use('/prompts', promptRouter)
+app.use(router)
 
 app.get('/openapi.json', (req, res) =>　/* #swagger.ignore = true */ res.json(swaggerDocument));
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));

@@ -1,5 +1,5 @@
-const promptRepository = require('../database/repositories/prompt.repository');
-const promptService = require('../services/prompt.service');
+const promptRepository = require('../../database/repositories/prompt.repository');
+const promptService = require('../../services/prompt.service');
 
 class AdminSkillController {
   /**
