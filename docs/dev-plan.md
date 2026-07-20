@@ -145,6 +145,10 @@ prompt-alchemy-server/
 
 ## 端點對應表
 
+`docs/FRONTEND_API_SPEC.md`（2026-07-18）併入本文件時，**同一個 Method + Path 若在下方 MVP 表已存在，一律以 MVP 表的定義為準、不覆蓋**（例如 `POST /auth/login`、`POST /auth/logout`、`GET /auth/me`、`POST /admin/skills`、`DELETE /admin/skills/:id`）；只有 MVP 表沒有的路由才併入下方「加分功能」表，作為 MVP 完成後的延伸範圍。加分功能的完整請求/回應範例請直接參考 `docs/FRONTEND_API_SPEC.md`，此處只列路由與分層對應。
+
+### MVP 功能（原有路由，維持不變）
+
 | Method | Path | 權限 | Controller | Service |
 |---|---|---|---|---|
 | GET | /health | 公開 | health.controller | — |
@@ -158,6 +162,32 @@ prompt-alchemy-server/
 | GET | /me/favorites | member | favorite.controller#listMine | favorite.service#listMyFavorites |
 | POST/PATCH/DELETE | /admin/categories(/:id) | admin | admin/category.controller | category.service |
 | POST/PATCH/DELETE | /admin/skills(/:id) | admin | admin/skill.controller | skill.service |
+
+### 加分功能（新增自 `docs/FRONTEND_API_SPEC.md`，路由與 MVP 表不重複）
+
+| Method | Path | 權限 | Controller | Service |
+|---|---|---|---|---|
+| POST | /auth/register | 公開 | auth.controller#register | auth.service#register |
+| GET | /prompts | 公開 | prompt.controller#list | prompt.service#listPrompts |
+| GET | /prompts/:id | 公開 | prompt.controller#getById | prompt.service#getPromptById |
+| POST | /prompts/:id/copy | 公開 | prompt.controller#copy | prompt.service#incrementCopyCount |
+| GET | /favorites | member | favorite.controller#listIds | favorite.service#listFavoriteIds |
+| POST | /favorites/toggle | member | favorite.controller#toggle | favorite.service#toggleFavorite |
+| GET | /utility/categories | 公開 | utility.controller#listCategories | category.service#listCategories |
+| GET | /utility/tags | 公開 | utility.controller#listTags | tag.service#listTags |
+| GET | /admin/skills | admin | admin/skill.controller#list | skill.service#listAdmin |
+| PUT | /admin/skills/:id | admin | admin/skill.controller#update | skill.service#updateSkill |
+| PATCH | /admin/skills/:id/active | admin | admin/skill.controller#toggleActive | skill.service#toggleActive |
+| GET | /admin/parameters | admin | admin/parameter.controller#list | parameter.service#listParameters |
+| POST | /admin/parameters | admin | admin/parameter.controller#create | parameter.service#createParameter |
+| PUT | /admin/parameters/:id | admin | admin/parameter.controller#update | parameter.service#updateParameter |
+| PATCH | /admin/parameters/:id/active | admin | admin/parameter.controller#toggleActive | parameter.service#toggleActive |
+| DELETE | /admin/parameters/:id | admin | admin/parameter.controller#remove | parameter.service#removeParameter |
+| GET | /admin/users | admin | admin/user.controller#list | user.service#listUsers |
+| POST | /admin/users | admin | admin/user.controller#create | user.service#createUser |
+| PUT | /admin/users/:id | admin | admin/user.controller#update | user.service#updateUser |
+| PATCH | /admin/users/:id/active | admin | admin/user.controller#toggleActive | user.service#toggleActive |
+| DELETE | /admin/users/:id | admin | admin/user.controller#remove | user.service#removeUser |
 
 ---
 
