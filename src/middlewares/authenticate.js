@@ -24,4 +24,18 @@ const vertfyToken = function (req, res, next) {
   }
 }
 
-module.exports = { vertfyToken }
+/**
+ * 權限守門員：檢查是否為 admin
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const isAdmin = function (req, res, next) {
+  if (req.user && req.user.role === 'admin') {
+    next()
+  } else {
+    return res.status(403).json({ status: 'false', message: '權限不足，拒絕存取' })
+  }
+}
+
+module.exports = { vertfyToken, isAdmin }
