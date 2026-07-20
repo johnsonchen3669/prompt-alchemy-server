@@ -18,6 +18,8 @@ app.use('/health', healthRouter)
 app.use('/utility', utilityRouter)
 app.use('/auth', authRouter)
 app.use('/admin/parameters', parameterRouter)
+app.use('/admin/users', require('./src/routes/admin.user.routes'))
+app.use('/admin/skills', require('./src/routes/admin.skill.routes'))
 app.use('/prompts', promptRouter)
 
 app.get('/openapi.json', (req, res) =>　/* #swagger.ignore = true */ res.json(swaggerDocument));

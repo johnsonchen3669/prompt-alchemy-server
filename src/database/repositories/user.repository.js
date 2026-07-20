@@ -2,8 +2,8 @@ const { query } = require('../db');
 
 /**
  * 重組使用者資訊
- * @param {{id: string, name: string, email: string, password_hash: string, role: string, created_at: string}} row
- * @returns {{id: string, name: string, email: string, passwordHash: string, role: string, createdAt: string} | null}
+ * @param {{id: string, name: string, email: string, password_hash: string, role: string, is_active: boolean, created_at: string}} row
+ * @returns {{id: string, name: string, email: string, passwordHash: string, role: string, isActive: boolean, createdAt: string} | null}
  */
 function mapRow(row) {
   if (!row) return null;
@@ -13,6 +13,7 @@ function mapRow(row) {
     email: row.email,
     passwordHash: row.password_hash,
     role: row.role,
+    isActive: row.is_active,
     createdAt: row.created_at,
   }
 }
@@ -52,4 +53,58 @@ async function findUserById(id) {
   return mapRow(rows[0])
 }
 
-module.exports = { createUser, findUserByEmail, findUserById };
+/**
+ * 取得使用者列表
+ * @param {string} [role] 
+ * @returns 
+ */
+async function getUsers(role) {
+  let sql = 'SELECT * FROM users';
+  const params = [];
+  if (role) {
+    sql += ' WHERE role = $1';
+    params.push(role);
+  }
+  sql += ' ORDER BY created_at DESC';
+  const { rows } = await query(sql, params);
+  return rows.map(mapRow);
+}
+
+/**
+ * 更新使用者資訊
+ * @param {string} id 
+ * @param {{name?: string, role?: string, isActive?: boolean}} data 
+ * @returns 
+ */
+async function updateUser(id, { name, role, isActive }) {
+  const updates = [];
+  const params = [];
+  let paramIndex = 1;
+
+  if (name !== undefined) {
+    updates.push(`name = $${paramIndex++}`);
+    params.push(name);
+  }
+  if (role !== undefined) {
+    updates.push(`role = $${paramIndex++}`);
+    params.push(role);
+  }
+  if (isActive !== undefined) {
+    updates.push(`is_active = $${paramIndex++}`);
+    params.push(isActive);
+  }
+
+  if (updates.length === 0) return await findUserById(id);
+
+  params.push(id);
+  const sql = `
+    UPDATE users 
+    SET ${updates.join(', ')} 
+    WHERE id = $${paramIndex} 
+    RETURNING *
+  `;
+  const { rows } = await query(sql, params);
+  return mapRow(rows[0]);
+}
+
+module.exports = { createUser, findUserByEmail, findUserById, getUsers, updateUser };
