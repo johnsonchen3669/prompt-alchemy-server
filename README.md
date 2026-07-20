@@ -125,12 +125,16 @@ prompt-alchemy-server/
 |  | MVP | POST | `/favorites/:skillId` | member | 收藏 |
 |  | MVP | DELETE | `/favorites/:skillId` | member | 取消收藏 |
 |  | MVP | GET | `/me/favorites` | member | 我的收藏 |
+|  | 加分 | GET | `/favorites` | member | 取得收藏清單 ID 列表 |
+|  | 加分 | POST | `/favorites/toggle` | member | 切換 / 更新收藏狀態 |
 
 ### Utility
 
 | 完成 | 類型 | Method | Path | 權限 | 說明 |
 |---|---|---|---|---|---|
 | ✅ | 加分 | POST | `/utility/upload` | 公開 | 上傳檔案至 GCP Bucket |
+|  | 加分 | GET | `/utility/categories` | 公開 | 取得分類選單列表 |
+|  | 加分 | GET | `/utility/tags` | 公開 | 取得標籤清單 |
 
 ### Admin Categories
 
@@ -150,6 +154,7 @@ prompt-alchemy-server/
 | ✅ | 加分 | GET | `/admin/skills` | admin | 取得後台 Prompt 列表 |
 | ✅ | 加分 | GET | `/admin/skills/:id` | admin | 取得單筆後台 Prompt |
 | ✅ | 加分 | PUT | `/admin/skills/:id` | admin | 修改 Prompt |
+|  | 加分 | PATCH | `/admin/skills/:id/active` | admin | 切換啟用/停用狀態 |
 
 ### Admin Parameters
 
@@ -158,6 +163,7 @@ prompt-alchemy-server/
 | ✅ | 加分 | GET | `/admin/parameters` | admin | 取得所有參數列表（分類/標籤/模型...），可用 `type` 篩選 |
 | ✅ | 加分 | POST | `/admin/parameters` | admin | 新增參數 |
 | ✅ | 加分 | PUT | `/admin/parameters/:id` | admin | 修改參數 |
+|  | 加分 | PATCH | `/admin/parameters/:id/active` | admin | 切換啟用/停用狀態 |
 | ✅ | 加分 | DELETE | `/admin/parameters/:id` | admin | 刪除參數 |
 
 ### Admin Users
@@ -165,7 +171,10 @@ prompt-alchemy-server/
 | 完成 | 類型 | Method | Path | 權限 | 說明 |
 |---|---|---|---|---|---|
 | ✅ | 加分 | GET | `/admin/users` | admin | 取得會員清單 |
+|  | 加分 | POST | `/admin/users` | admin | 新增會員 |
 | ✅ | 加分 | PUT | `/admin/users/:id` | admin | 修改會員資料 |
+|  | 加分 | PATCH | `/admin/users/:id/active` | admin | 切換啟用/停用狀態 |
+|  | 加分 | DELETE | `/admin/users/:id` | admin | 刪除會員 |
 
 ## 認證方式
 
