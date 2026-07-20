@@ -209,6 +209,64 @@ class ParameterController {
       next(error);
     }
   }
+
+  /**
+   * 刪除參數 (軟刪除 / 停用)
+   * DELETE /admin/parameters/:id
+   */
+  async deleteParameter(req, res, next) {
+    try {
+      /* 
+        #swagger.tags = ['Admin Parameters']
+        #swagger.summary = '刪除參數 (軟刪除)'
+        #swagger.description = '透過將參數設定為未啟用 (isActive: false) 來進行軟刪除。'
+        #swagger.parameters['id'] = {
+            in: 'path',
+            description: '參數 ID (UUID)',
+            required: true,
+            type: 'string'
+        }
+        #swagger.responses[200] = {
+            description: '成功停用/軟刪除參數',
+            content: {
+                "application/json": {
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            status: { type: 'string', example: 'success' },
+                            message: { type: 'string', example: '參數已刪除/停用' },
+                            data: {
+                                type: 'object',
+                                properties: {
+                                    id: { type: 'string', format: 'uuid', example: '755f3568-2333-4709-b916-582eae69e195' },
+                                    isActive: { type: 'boolean', example: false }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        #swagger.responses[404] = { description: '找不到參數' }
+      */
+      const { id } = req.params;
+      const data = await parameterService.updateParameter(id, { isActive: false });
+      
+      res.status(200).json({
+        status: 'success',
+        message: '參數已刪除/停用',
+        data
+      });
+    } catch (error) {
+      if (error.message === '找不到參數') {
+        return res.status(404).json({
+          status: 'error',
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
 }
 
 module.exports = new ParameterController();

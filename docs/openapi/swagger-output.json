@@ -1040,6 +1040,63 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Admin Parameters"
+        ],
+        "summary": "刪除參數 (軟刪除)",
+        "description": "透過將參數設定為未啟用 (isActive: false) 來進行軟刪除。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "參數 ID (UUID)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功停用/軟刪除參數",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "參數已刪除/停用"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "example": "755f3568-2333-4709-b916-582eae69e195"
+                        },
+                        "isActive": {
+                          "type": "boolean",
+                          "example": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "找不到參數"
+          }
+        }
       }
     }
   },

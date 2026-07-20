@@ -10,5 +10,6 @@ const parameterController = require('../controllers/parameter.controller');
 router.get('/', parameterController.getParameters);
 router.post('/', parameterController.createParameter);
 router.put('/:id', parameterController.updateParameter);
+router.delete('/:id', parameterController.deleteParameter);
 
 module.exports = router;
