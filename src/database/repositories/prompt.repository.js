@@ -9,27 +9,56 @@ class PromptRepository {
    * @param {string} [options.search] 關鍵字
    */
   async findActivePrompts({ category, tag, search } = {}) {
-    let sql = 'SELECT * FROM skill_item WHERE is_active = true';
+    let sql = `
+    SELECT
+      s.*,
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', p.id,
+              'name', p.name
+            )
+            ORDER BY p.sort_order
+          )
+          FROM json_array_elements_text(
+            COALESCE(s.tags, '[]'::json)
+          ) AS t(tag_id)
+          JOIN parameters p
+            ON p.id = t.tag_id::uuid
+          WHERE p.type = 'tag'
+        ),
+        '[]'::json
+      ) AS tags
+    FROM skill_item s
+    WHERE s.is_active = true
+  `;
     const params = [];
     let paramIndex = 1;
 
     if (category) {
-      sql += ` AND category_id = $${paramIndex++}`;
+      sql += ` AND s.category_id = $${paramIndex++}`;
       params.push(category);
     }
 
     if (tag) {
-      sql += ` AND tags::text ILIKE $${paramIndex++}`;
-      params.push(`%${tag}%`);
+      sql += `
+    AND EXISTS (
+      SELECT 1
+      FROM json_array_elements_text(s.tags) AS t(tag_id)
+      WHERE t.tag_id = $${paramIndex++}
+    )
+ `;
+      params.push(tag);
     }
 
     if (search) {
-      sql += ` AND (title ILIKE $${paramIndex} OR intro ILIKE $${paramIndex} OR prompt_content ILIKE $${paramIndex})`;
+      sql += ` AND (s.title ILIKE $${paramIndex} OR s.intro ILIKE $${paramIndex} OR s.prompt_content ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
-    sql += ' ORDER BY created_at DESC';
+    sql += ' ORDER BY s.created_at DESC';
 
     const result = await db.query(sql, params);
     return result.rows;
@@ -121,12 +150,12 @@ class PromptRepository {
         $8, $9, $10, $11::json, $12, $13, $14
       ) RETURNING *
     `;
-    
+
     const params = [
-      title || '', slug || null, intro || '', contentTypeId || null, categoryId || null, 
+      title || '', slug || null, intro || '', contentTypeId || null, categoryId || null,
       JSON.stringify(modelType || []), JSON.stringify(tags || []),
-      promptContent || '', useCase || '', exampleInput || '', 
-      JSON.stringify(exampleOutput || []), userId || null, sourceUrl || '', 
+      promptContent || '', useCase || '', exampleInput || '',
+      JSON.stringify(exampleOutput || []), userId || null, sourceUrl || '',
       isActive ?? true
     ];
 
