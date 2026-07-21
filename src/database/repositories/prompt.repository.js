@@ -10,8 +10,10 @@ class PromptRepository {
    */
   async findActivePrompts({ category, tag, search } = {}) {
     let sql = `
-    SELECT
+        SELECT
       s.*,
+      cp.name AS category_name,
+      cp.memo AS memo,
       COALESCE(
         (
           SELECT json_agg(
@@ -31,6 +33,9 @@ class PromptRepository {
         '[]'::json
       ) AS tags
     FROM skill_item s
+    LEFT JOIN parameters cp
+      ON cp.id = s.category_id
+      AND cp.type = 'category'
     WHERE s.is_active = true
   `;
     const params = [];

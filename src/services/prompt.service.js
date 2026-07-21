@@ -97,6 +97,7 @@ class PromptService {
       exampleOutput: formattedExampleOutput,
       categoryId: row.category_id || '',
       category: row.category_name || '',
+      memo: row.memo || '',
       tags: row.tags || [],
       sourceUrl: row.source_url || '',
       copyCount: row.copy_count || 0,
