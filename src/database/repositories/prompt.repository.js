@@ -74,7 +74,34 @@ class PromptRepository {
    * @param {string} id UUID
    */
   async findActiveById(id) {
-    const sql = 'SELECT * FROM skill_item WHERE id = $1 AND is_active = true';
+    const sql = `
+      SELECT
+        s.*,
+        cp.name AS category_name,
+        cp.memo AS memo,
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', p.id,
+                'name', p.name
+              )
+              ORDER BY p.sort_order
+            )
+            FROM json_array_elements_text(
+              COALESCE(s.tags, '[]'::json)
+            ) AS t(tag_id)
+            JOIN parameters p
+              ON p.id = t.tag_id::uuid
+            WHERE p.type = 'tag'
+          ),
+          '[]'::json
+        ) AS tags
+      FROM skill_item s
+      LEFT JOIN parameters cp
+        ON s.category_id = cp.id AND cp.type = 'category'
+      WHERE s.id = $1 AND s.is_active = true
+    `;
     const result = await db.query(sql, [id]);
     return result.rows[0] || null;
   }
@@ -100,30 +127,57 @@ class PromptRepository {
    * 後台取得所有技能 (不限上架狀態)
    */
   async findAllForAdmin({ keyword, contentTypeId, categoryId, active } = {}) {
-    let sql = 'SELECT * FROM skill_item WHERE 1=1';
+    let sql = `
+      SELECT
+        s.*,
+        cp.name AS category_name,
+        cp.memo AS memo,
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', p.id,
+                'name', p.name
+              )
+              ORDER BY p.sort_order
+            )
+            FROM json_array_elements_text(
+              COALESCE(s.tags, '[]'::json)
+            ) AS t(tag_id)
+            JOIN parameters p
+              ON p.id = t.tag_id::uuid
+            WHERE p.type = 'tag'
+          ),
+          '[]'::json
+        ) AS tags
+      FROM skill_item s
+      LEFT JOIN parameters cp
+        ON s.category_id = cp.id AND cp.type = 'category'
+      WHERE 1=1
+    `;
     const params = [];
     let paramIndex = 1;
 
     if (keyword) {
-      sql += ` AND (title ILIKE $${paramIndex} OR intro ILIKE $${paramIndex})`;
+      sql += ` AND (s.title ILIKE $${paramIndex} OR s.intro ILIKE $${paramIndex})`;
       params.push(`%${keyword}%`);
       paramIndex++;
     }
     if (contentTypeId) {
-      sql += ` AND content_type_id = $${paramIndex++}`;
+      sql += ` AND s.content_type_id = $${paramIndex++}`;
       params.push(contentTypeId);
     }
     if (categoryId) {
-      sql += ` AND category_id = $${paramIndex++}`;
+      sql += ` AND s.category_id = $${paramIndex++}`;
       params.push(categoryId);
     }
     if (active === 'active') {
-      sql += ` AND is_active = true`;
+      sql += ` AND s.is_active = true`;
     } else if (active === 'inactive') {
-      sql += ` AND is_active = false`;
+      sql += ` AND s.is_active = false`;
     }
 
-    sql += ' ORDER BY updated_at DESC';
+    sql += ' ORDER BY s.updated_at DESC';
     const result = await db.query(sql, params);
     return result.rows;
   }
@@ -132,7 +186,34 @@ class PromptRepository {
    * 後台取得單筆技能
    */
   async findByIdForAdmin(id) {
-    const sql = 'SELECT * FROM skill_item WHERE id = $1';
+    const sql = `
+      SELECT
+        s.*,
+        cp.name AS category_name,
+        cp.memo AS memo,
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', p.id,
+                'name', p.name
+              )
+              ORDER BY p.sort_order
+            )
+            FROM json_array_elements_text(
+              COALESCE(s.tags, '[]'::json)
+            ) AS t(tag_id)
+            JOIN parameters p
+              ON p.id = t.tag_id::uuid
+            WHERE p.type = 'tag'
+          ),
+          '[]'::json
+        ) AS tags
+      FROM skill_item s
+      LEFT JOIN parameters cp
+        ON s.category_id = cp.id AND cp.type = 'category'
+      WHERE s.id = $1
+    `;
     const result = await db.query(sql, [id]);
     return result.rows[0] || null;
   }
@@ -165,7 +246,11 @@ class PromptRepository {
     ];
 
     const result = await db.query(sql, params);
-    return result.rows[0];
+    const newRow = result.rows[0];
+    if (newRow) {
+      return await this.findByIdForAdmin(newRow.id);
+    }
+    return null;
   }
 
   /**
@@ -215,7 +300,11 @@ class PromptRepository {
       RETURNING *
     `;
     const result = await db.query(sql, params);
-    return result.rows[0];
+    const updatedRow = result.rows[0];
+    if (updatedRow) {
+      return await this.findByIdForAdmin(updatedRow.id);
+    }
+    return null;
   }
 }
 
