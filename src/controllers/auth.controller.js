@@ -1,8 +1,9 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require("crypto");
-const { createUser, findUserByEmail, findUserById } = require("../database/repositories/user.repository")
+const { findUserByEmail, findUserById } = require("../database/repositories/user.repository")
 const { JWT_SECRET } = require('../config/env')
+const authService = require('../services/auth.service');
 
 /**
  * 註冊使用者
@@ -22,21 +23,15 @@ async function register(req, res, next) {
         .json({ status: 'false', message: '請填寫 email、name 與 password' });
     }
 
-    // 阻止重複 email 註冊
-    const foundUser = await findUserByEmail(email)
-
-    if (foundUser) {
-      return res.status(400).json({ status: 'false', message: 'email 已被使用' });
+    let createdUser;
+    try {
+      createdUser = await authService.register({ email, name, password });
+    } catch (error) {
+      if (error.code === 'EMAIL_TAKEN') {
+        return res.status(400).json({ status: 'false', message: 'email 已被使用' });
+      }
+      throw error;
     }
-
-    // 密碼雜湊
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = {
-      email,
-      name,
-      passwordHash: hashedPassword,
-    };
-    const createdUser = await createUser(newUser)
     res.status(201).json({
       status: 'success',
       message: '註冊成功',

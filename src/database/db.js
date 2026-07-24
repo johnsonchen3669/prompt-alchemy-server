@@ -27,6 +27,7 @@ function createBackend() {
     return {
       query: (text, params) => pool.query(text, params),
       exec: (sql) => pool.query(sql),
+      connect: () => pool.connect(),
     }
   }
 
@@ -66,4 +67,32 @@ async function exec(sql) {
   return backend.exec(sql)
 }
 
-module.exports = { query, exec }
+/**
+ * 在同一個資料庫連線中執行一組操作。PostgreSQL 使用 Pool client，
+ * PGlite 則使用同一個內嵌資料庫實例。
+ */
+async function withTransaction(callback) {
+  const backend = await getBackend();
+  const connection = backend.connect ? await backend.connect() : backend;
+  const transaction = {
+    query: (text, params) => connection.query(text, params),
+  };
+
+  try {
+    await connection.query('BEGIN');
+    const result = await callback(transaction);
+    await connection.query('COMMIT');
+    return result;
+  } catch (error) {
+    try {
+      await connection.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('[DB] transaction rollback 失敗', rollbackError);
+    }
+    throw error;
+  } finally {
+    if (typeof connection.release === 'function') connection.release();
+  }
+}
+
+module.exports = { query, exec, withTransaction }

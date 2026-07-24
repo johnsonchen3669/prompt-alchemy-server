@@ -33,4 +33,30 @@ async function checkFavoriteStatus(req, res, next) {
     }
 }
 
-module.exports = { toggleFavorite, getMyFavorites, checkFavoriteStatus };
+async function clearMyFavorites(req, res, next) {
+    try {
+        const userId = req.user.userId;
+        const data = await favoriteService.clearMyFavorites(userId);
+        res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function restoreDefaultFavorites(req, res, next) {
+    try {
+        const userId = req.user.userId;
+        const data = await favoriteService.restoreDefaultFavorites(userId);
+        res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+module.exports = {
+    toggleFavorite,
+    getMyFavorites,
+    checkFavoriteStatus,
+    clearMyFavorites,
+    restoreDefaultFavorites,
+};

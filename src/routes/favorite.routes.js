@@ -10,6 +10,8 @@ router.use(vertfyToken);
 router.get('/', favoriteController.getMyFavorites);
 router.get('/:skillId/status', favoriteController.checkFavoriteStatus);
 router.post('/:skillId/toggle', favoriteController.toggleFavorite);
+router.delete('/', favoriteController.clearMyFavorites);
+router.post('/defaults', favoriteController.restoreDefaultFavorites);
 
 // TODO: 掛載 favorite 路由
 

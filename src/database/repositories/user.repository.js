@@ -1,4 +1,4 @@
-const { query } = require('../db');
+const db = require('../db');
 
 /**
  * 重組使用者資訊
@@ -23,8 +23,8 @@ function mapRow(row) {
  * @param {{name:string,email:string,passwordHash:string,role?:string}} params 
  * @returns 
  */
-async function createUser({ name, email, passwordHash, role = "member" }) {
-  const { rows } = await query(
+async function createUser({ name, email, passwordHash, role = "member" }, executor = db) {
+  const { rows } = await executor.query(
     `INSERT INTO users (name, email, password_hash, role)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
@@ -38,8 +38,8 @@ async function createUser({ name, email, passwordHash, role = "member" }) {
  * @param {string} email 
  * @returns 
  */
-async function findUserByEmail(email) {
-  const { rows } = await query('SELECT * FROM users WHERE email = $1', [email])
+async function findUserByEmail(email, executor = db) {
+  const { rows } = await executor.query('SELECT * FROM users WHERE email = $1', [email])
   return mapRow(rows[0])
 }
 
@@ -48,8 +48,8 @@ async function findUserByEmail(email) {
  * @param {string} id 
  * @returns 
  */
-async function findUserById(id) {
-  const { rows } = await query('SELECT * FROM users WHERE id = $1', [id])
+async function findUserById(id, executor = db) {
+  const { rows } = await executor.query('SELECT * FROM users WHERE id = $1', [id])
   return mapRow(rows[0])
 }
 
