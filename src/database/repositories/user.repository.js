@@ -58,7 +58,7 @@ async function findUserById(id, executor = db) {
  * @param {string} [role] 
  * @returns 
  */
-async function getUsers(role) {
+async function getUsers(role, executor = db) {
   let sql = 'SELECT * FROM users';
   const params = [];
   if (role) {
@@ -66,7 +66,7 @@ async function getUsers(role) {
     params.push(role);
   }
   sql += ' ORDER BY created_at DESC';
-  const { rows } = await query(sql, params);
+  const { rows } = await executor.query(sql, params);
   return rows.map(mapRow);
 }
 
@@ -76,7 +76,7 @@ async function getUsers(role) {
  * @param {{name?: string, role?: string, isActive?: boolean}} data 
  * @returns 
  */
-async function updateUser(id, { name, role, isActive }) {
+async function updateUser(id, { name, role, isActive }, executor = db) {
   const updates = [];
   const params = [];
   let paramIndex = 1;
@@ -94,7 +94,7 @@ async function updateUser(id, { name, role, isActive }) {
     params.push(isActive);
   }
 
-  if (updates.length === 0) return await findUserById(id);
+  if (updates.length === 0) return await findUserById(id, executor);
 
   params.push(id);
   const sql = `
@@ -103,7 +103,7 @@ async function updateUser(id, { name, role, isActive }) {
     WHERE id = $${paramIndex} 
     RETURNING *
   `;
-  const { rows } = await query(sql, params);
+  const { rows } = await executor.query(sql, params);
   return mapRow(rows[0]);
 }
 
