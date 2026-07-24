@@ -6,6 +6,7 @@ router.use('/health', require('./health.routes'))
 router.use('/auth', require('./auth.routes'))
 router.use('/utility', require('./utility.routes'))
 router.use('/prompts', require('./prompt.routes'));
+router.use('/favorites', require('./favorite.routes'));
 
 // 後台 router
 router.use('/admin/parameters', require('./admin/parameter.routes'))

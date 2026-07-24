@@ -45,3 +45,16 @@ CREATE TABLE
 
 CREATE INDEX IF NOT EXISTS idx_skill_item_category_id ON skill_item(category_id);
 CREATE INDEX IF NOT EXISTS idx_skill_item_is_active ON skill_item(is_active);
+
+CREATE TABLE
+  IF NOT EXISTS favorite (
+    user_id UUID NOT NULL REFERENCES users(id),
+    skill_item_id UUID NOT NULL REFERENCES skill_item(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    memo TEXT,
+    CONSTRAINT favorite_pkey PRIMARY KEY (user_id, skill_item_id)
+  );
+
+CREATE INDEX IF NOT EXISTS idx_favorite_skill_item_id ON favorite(skill_item_id);
+
