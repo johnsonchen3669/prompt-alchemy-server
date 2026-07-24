@@ -46,7 +46,7 @@ prompt-alchemy-server/
 │   │   ├── utility.controller.js        # 檔案上傳（GCP Bucket）
 │   │   ├── prompt.controller.js         # 前台 Prompt 列表 / 詳情 / 複製次數累加
 │   │   ├── category.controller.js       # TODO：前台 category（尚未實作，空殼）
-│   │   ├── favorite.controller.js       # TODO：收藏功能（尚未實作，空殼）
+│   │   ├── favorite.controller.js       # 收藏功能：getMyFavorites / checkFavoriteStatus / toggleFavorite / clearMyFavorites / restoreDefaultFavorites
 │   │   ├── skill.controller.js          # TODO：前台 skill（尚未實作，空殼；功能已由 prompt.controller 涵蓋，待確認是否仍需要）
 │   │   └── admin/
 │   │       ├── parameter.controller.js  # 後台參數管理（新增/修改/刪除）
@@ -61,7 +61,7 @@ prompt-alchemy-server/
 │       ├── utility.routes.js            # /upload
 │       ├── prompt.routes.js             # /、/:id、/:id/copy
 │       ├── category.routes.js           # TODO：尚未掛載任何 endpoint
-│       ├── favorite.routes.js           # TODO：尚未掛載任何 endpoint
+│       ├── favorite.routes.js           # /、/:skillId/status、/:skillId/toggle、/defaults（皆需登入）
 │       ├── skill.routes.js              # TODO：尚未掛載任何 endpoint
 │       └── admin/
 │           ├── parameter.routes.js      # /、/:id（皆需 admin）
@@ -88,7 +88,7 @@ prompt-alchemy-server/
 └── package.json
 ```
 
-> `health`、`auth`、前台 `prompts`、`utility/upload`、後台 `admin/parameters`、`admin/skills`、`admin/users` 已完成並掛載（部分端點還缺規格要求的動作，見下表）。前台 `category`/`favorite`/`skill` 與後台 `admin/category` 目前只是空殼 route/controller，尚未掛載任何 endpoint。
+> `health`、`auth`、前台 `prompts`、`favorites`、`utility/upload`、後台 `admin/parameters`、`admin/skills`、`admin/users` 已完成並掛載（部分端點還缺規格要求的動作，見下表）。前台 `category`/`skill` 與後台 `admin/category` 目前只是空殼 route/controller，尚未掛載任何 endpoint。
 
 ## API 路由
 
@@ -122,11 +122,11 @@ prompt-alchemy-server/
 
 | 完成 | 類型 | Method | Path | 權限 | 說明 |
 |---|---|---|---|---|---|
-|  | MVP | POST | `/favorites/:skillId` | member | 收藏 |
-|  | MVP | DELETE | `/favorites/:skillId` | member | 取消收藏 |
-|  | MVP | GET | `/me/favorites` | member | 我的收藏 |
-|  | 加分 | GET | `/favorites` | member | 取得收藏清單 ID 列表 |
-|  | 加分 | POST | `/favorites/toggle` | member | 切換 / 更新收藏狀態 |
+| ✅ | 加分 | GET | `/favorites` | 已登入 | 取得我的收藏清單 |
+| ✅ | 加分 | GET | `/favorites/:skillId/status` | 已登入 | 檢查單一 Skill 是否已收藏 |
+| ✅ | 加分 | POST | `/favorites/:skillId/toggle` | 已登入 | 切換收藏狀態（新增/取消） |
+| ✅ | 加分 | DELETE | `/favorites` | 已登入 | 清除我的所有收藏 |
+| ✅ | 加分 | POST | `/favorites/defaults` | 已登入 | 恢復預設收藏 |
 
 ### Utility
 
