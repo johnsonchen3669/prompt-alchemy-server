@@ -7,6 +7,7 @@ on:
 
 jobs:
   sync:
+    if: github.repository_owner != 'liwenchiou' # 避免在個人 Fork 儲存庫中重複觸發同步
     runs-on: ubuntu-latest
     steps:
       - name: 檢出最新程式碼
