@@ -20,5 +20,5 @@ jobs:
           SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
           # 綁定您的儲存庫為遠端目標並推送
-          git remote add fork https://liwenchiou:${SYNC_TOKEN}@github.com/liwenchiou/prompt-alchemy-server.git
+          git remote add fork https://x-access-token:${SYNC_TOKEN}@github.com/liwenchiou/prompt-alchemy-server.git
           git push fork main --force
