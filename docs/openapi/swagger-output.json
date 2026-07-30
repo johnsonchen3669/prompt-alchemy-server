@@ -893,6 +893,456 @@
         }
       }
     },
+    "/favorites/": {
+      "get": {
+        "tags": [
+          "Favorites"
+        ],
+        "summary": "取得我的收藏清單",
+        "description": "取得目前登入者的收藏 Prompt/Skill 完整資料，依收藏時間新到舊排序。回傳欄位為資料庫原始 snake_case 命名，並額外帶出 favorited_at、sort_order、category_name。",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Favorites"
+        ],
+        "summary": "清除我的所有收藏",
+        "description": "一次移除目前登入者的所有收藏，並重新計算受影響 Prompt/Skill 的 favorite_count。",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功清除所有收藏",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "favoriteIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "description": "清除後的收藏 ID 清單，必為空陣列",
+                          "example": []
+                        },
+                        "favoriteCounts": {
+                          "type": "object",
+                          "description": "受影響 Prompt/Skill 重算後的收藏數，key 為 skillId",
+                          "additionalProperties": {
+                            "type": "integer"
+                          },
+                          "example": {
+                            "9fcf96a4-eb05-4d4a-b7e2-fdb4b2da87f6": 31
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未帶 token 或 token 失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/favorites/{skillId}/status": {
+      "get": {
+        "tags": [
+          "Favorites"
+        ],
+        "summary": "檢查單一 Skill 是否已收藏",
+        "description": "前台進入 Prompt 詳情頁時，確認目前登入者是否已收藏該筆資料。",
+        "parameters": [
+          {
+            "name": "skillId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Prompt/Skill ID (UUID)"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功取得收藏狀態",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "isFavorited": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未帶 token 或 token 失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/favorites/{skillId}/toggle": {
+      "post": {
+        "tags": [
+          "Favorites"
+        ],
+        "summary": "切換收藏狀態（新增/取消）",
+        "description": "同一支端點切換收藏：原本未收藏則新增、已收藏則取消，並回傳切換後的狀態與該筆資料重算後的收藏數。",
+        "parameters": [
+          {
+            "name": "skillId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Prompt/Skill ID (UUID)"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功切換收藏狀態",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "isFavorited": {
+                          "type": "boolean",
+                          "example": true,
+                          "description": "切換後的收藏狀態"
+                        },
+                        "favoriteCount": {
+                          "type": "integer",
+                          "example": 33,
+                          "description": "該筆資料重算後的收藏數"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未帶 token 或 token 失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/favorites/defaults": {
+      "post": {
+        "tags": [
+          "Favorites"
+        ],
+        "summary": "恢復預設收藏",
+        "description": "清空目前登入者的收藏後，重新寫入 src/config/favorite.config.js 定義的 DEFAULT_FAVORITE_SKILL_IDS 預設收藏。",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功恢復預設收藏",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "favoriteIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "description": "恢復後的預設收藏 ID 清單",
+                          "example": [
+                            "9fcf96a4-eb05-4d4a-b7e2-fdb4b2da87f6",
+                            "6d56531f-a28f-4ebe-977f-5d6222cab34e"
+                          ]
+                        },
+                        "favoriteCounts": {
+                          "type": "object",
+                          "description": "受影響 Prompt/Skill 重算後的收藏數，key 為 skillId",
+                          "additionalProperties": {
+                            "type": "integer"
+                          },
+                          "example": {
+                            "9fcf96a4-eb05-4d4a-b7e2-fdb4b2da87f6": 32
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未帶 token 或 token 失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "false"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "請先登入"
+                    }
+                  },
+                  "xml": {
+                    "name": "main"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/admin/parameters/": {
       "get": {
         "tags": [
