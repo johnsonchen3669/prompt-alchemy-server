@@ -229,7 +229,7 @@ async function seed() {
          $1, $2, $3, $4, $5, $6, $7::json, $8::json,
          $9, $10, $11, $12::json, $13, $14,
          $15, $16, true, $17
-       ) ON CONFLICT (id) DO UPDATE SET
+       ) ON CONFLICT (slug) DO UPDATE SET
          title = EXCLUDED.title,
          intro = EXCLUDED.intro,
          prompt_content = EXCLUDED.prompt_content,
