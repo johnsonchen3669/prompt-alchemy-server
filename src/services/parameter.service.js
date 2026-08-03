@@ -1,5 +1,11 @@
 const parameterRepository = require('../database/repositories/parameter.repository');
 
+function createHttpError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
 class ParameterService {
   /**
    * 允許的參數類型白名單
@@ -13,7 +19,7 @@ class ParameterService {
    */
   async getParameters(type) {
     if (type && !ParameterService.ALLOWED_TYPES.includes(type)) {
-      throw new Error(`無效的參數類型: ${type}`);
+      throw createHttpError(`無效的參數類型: ${type}`, 400);
     }
 
     const rows = await parameterRepository.findAll(type);
@@ -26,7 +32,7 @@ class ParameterService {
   async getParameterById(id) {
     const row = await parameterRepository.findById(id);
     if (!row) {
-      throw new Error('找不到參數');
+      throw createHttpError('找不到參數', 404);
     }
     return this._mapToApiFormat(row);
   }
@@ -36,10 +42,10 @@ class ParameterService {
    */
   async createParameter(data) {
     if (!ParameterService.ALLOWED_TYPES.includes(data.type)) {
-      throw new Error(`無效的參數類型: ${data.type}`);
+      throw createHttpError(`無效的參數類型: ${data.type}`, 400);
     }
     if (!data.name) {
-      throw new Error('參數名稱為必填');
+      throw createHttpError('參數名稱為必填', 400);
     }
 
     // 將 API 欄位轉換為資料庫欄位
@@ -62,7 +68,7 @@ class ParameterService {
     // 先確認是否存在
     const existing = await parameterRepository.findById(id);
     if (!existing) {
-      throw new Error('找不到參數');
+      throw createHttpError('找不到參數', 404);
     }
 
     // 將 API 欄位轉換為資料庫欄位
