@@ -2,13 +2,15 @@ const db = require('../db');
 
 class PromptRepository {
   /**
-   * 取得上架中的 Prompt 列表，支援關鍵字、分類與標籤過濾
-   * @param {Object} options 
-   * @param {string} [options.category] 分類 ID
-   * @param {string} [options.tag] 標籤 ID
-   * @param {string} [options.search] 關鍵字
+   * 取得啟用中的 Prompt 列表，可依分類、標籤及關鍵字篩選。
+   * @param {Object} options 篩選條件
+   * @param {string} [options.category] 分類 UUID
+   * @param {string} [options.tag] 標籤 UUID
+   * @param {string} [options.search] 搜尋關鍵字
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Array>} Prompt 資料陣列
    */
-  async findActivePrompts({ category, tag, search } = {}) {
+  async findActivePrompts({ category, tag, search } = {}, executor = db) {
     let sql = `
         SELECT
       s.*,
@@ -65,15 +67,17 @@ class PromptRepository {
 
     sql += ' ORDER BY s.created_at DESC';
 
-    const result = await db.query(sql, params);
+    const result = await executor.query(sql, params);
     return result.rows;
   }
 
   /**
-   * 根據 ID 取得單一上架中的 Prompt
-   * @param {string} id UUID
+   * 依 UUID 取得單一啟用中的 Prompt。
+   * @param {string} id Prompt UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Object|null>} Prompt 資料或 null
    */
-  async findActiveById(id) {
+  async findActiveById(id, executor = db) {
     const sql = `
       SELECT
         s.*,
@@ -102,31 +106,38 @@ class PromptRepository {
         ON s.category_id = cp.id AND cp.type = 'category'
       WHERE s.id = $1 AND s.is_active = true
     `;
-    const result = await db.query(sql, [id]);
+    const result = await executor.query(sql, [id]);
     return result.rows[0] || null;
   }
 
   /**
-   * 增加 Prompt 複製使用次數
-   * @param {string} id UUID
+   * 將啟用中 Prompt 的複製使用次數加一。
+   * @param {string} id Prompt UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Object|null>} 更新後的 ID 與複製次數或 null
    */
-  async incrementCopyCount(id) {
+  async incrementCopyCount(id, executor = db) {
     const sql = `
       UPDATE skill_item 
       SET copy_count = copy_count + 1 
       WHERE id = $1 AND is_active = true 
       RETURNING id, copy_count
     `;
-    const result = await db.query(sql, [id]);
+    const result = await executor.query(sql, [id]);
     return result.rows[0] || null;
   }
 
-  // --- Admin API Methods ---
-
   /**
-   * 後台取得所有技能 (不限上架狀態)
+   * 取得後台 Prompt 列表，可依關鍵字、內容類型、分類及啟用狀態篩選。
+   * @param {Object} options 篩選條件
+   * @param {string} [options.keyword] 搜尋關鍵字
+   * @param {string} [options.contentTypeId] 內容類型 UUID
+   * @param {string} [options.categoryId] 分類 UUID
+   * @param {string} [options.active] 啟用狀態篩選
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Array>} Prompt 資料陣列
    */
-  async findAllForAdmin({ keyword, contentTypeId, categoryId, active } = {}) {
+  async findAllForAdmin({ keyword, contentTypeId, categoryId, active } = {}, executor = db) {
     let sql = `
       SELECT
         s.*,
@@ -178,14 +189,17 @@ class PromptRepository {
     }
 
     sql += ' ORDER BY s.updated_at DESC';
-    const result = await db.query(sql, params);
+    const result = await executor.query(sql, params);
     return result.rows;
   }
 
   /**
-   * 後台取得單筆技能
+   * 依 UUID 取得後台單筆 Prompt，包含未啟用資料。
+   * @param {string} id Prompt UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Object|null>} Prompt 資料或 null
    */
-  async findByIdForAdmin(id) {
+  async findByIdForAdmin(id, executor = db) {
     const sql = `
       SELECT
         s.*,
@@ -214,14 +228,17 @@ class PromptRepository {
         ON s.category_id = cp.id AND cp.type = 'category'
       WHERE s.id = $1
     `;
-    const result = await db.query(sql, [id]);
+    const result = await executor.query(sql, [id]);
     return result.rows[0] || null;
   }
 
   /**
-   * 後台新增技能
+   * 建立後台 Prompt 並回傳包含關聯名稱的完整資料。
+   * @param {Object} data Prompt API 欄位資料
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Object|null>} 新建立的 Prompt 資料或 null
    */
-  async createSkill(data) {
+  async createSkill(data, executor = db) {
     const {
       title, slug, intro, contentTypeId, categoryId, modelType, tags,
       promptContent, useCase, exampleInput, exampleOutput, userId, sourceUrl, isActive
@@ -245,18 +262,22 @@ class PromptRepository {
       isActive ?? true
     ];
 
-    const result = await db.query(sql, params);
+    const result = await executor.query(sql, params);
     const newRow = result.rows[0];
     if (newRow) {
-      return await this.findByIdForAdmin(newRow.id);
+      return await this.findByIdForAdmin(newRow.id, executor);
     }
     return null;
   }
 
   /**
-   * 後台修改技能
+   * 依 UUID 部分更新後台 Prompt，並回傳包含關聯名稱的完整資料。
+   * @param {string} id Prompt UUID
+   * @param {Object} data 要更新的 Prompt API 欄位
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Object|null>} 更新後的 Prompt 資料或 null
    */
-  async updateSkill(id, data) {
+  async updateSkill(id, data, executor = db) {
     const updates = [];
     const params = [];
     let paramIndex = 1;
@@ -288,7 +309,7 @@ class PromptRepository {
       }
     }
 
-    if (updates.length === 0) return await this.findByIdForAdmin(id);
+    if (updates.length === 0) return await this.findByIdForAdmin(id, executor);
 
     updates.push(`updated_at = now()`);
     params.push(id);
@@ -299,10 +320,10 @@ class PromptRepository {
       WHERE id = $${paramIndex} 
       RETURNING *
     `;
-    const result = await db.query(sql, params);
+    const result = await executor.query(sql, params);
     const updatedRow = result.rows[0];
     if (updatedRow) {
-      return await this.findByIdForAdmin(updatedRow.id);
+      return await this.findByIdForAdmin(updatedRow.id, executor);
     }
     return null;
   }
