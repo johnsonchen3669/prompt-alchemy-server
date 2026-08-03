@@ -207,7 +207,7 @@ async function seed() {
     await db.query(
       `INSERT INTO parameters (id, type, name, memo, is_active, sort_order)
        VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (id) DO UPDATE SET
+       ON CONFLICT (type, name) DO UPDATE SET
          name = EXCLUDED.name,
          memo = EXCLUDED.memo,
          is_active = EXCLUDED.is_active,
