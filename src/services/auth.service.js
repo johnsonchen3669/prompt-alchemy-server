@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const db = require('../database/db');
-const { createUser, findUserByEmail } = require('../database/repositories/user.repository');
+const userRepository = require('../database/repositories/user.repository');
 const { createDefaultFavoritesForNewUser } = require('./favorite.service');
 
 function createEmailTakenError() {
@@ -14,10 +14,10 @@ async function register({ email, name, password }) {
 
   try {
     return await db.withTransaction(async (transaction) => {
-      const foundUser = await findUserByEmail(email, transaction);
+      const foundUser = await userRepository.findUserByEmail(email, transaction);
       if (foundUser) throw createEmailTakenError();
 
-      const createdUser = await createUser({ email, name, passwordHash }, transaction);
+      const createdUser = await userRepository.createUser({ email, name, passwordHash }, transaction);
       await createDefaultFavoritesForNewUser(createdUser.id, transaction);
       return createdUser;
     });

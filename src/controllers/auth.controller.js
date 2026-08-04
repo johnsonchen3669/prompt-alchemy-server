@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require("crypto");
-const { findUserByEmail, findUserById } = require("../database/repositories/user.repository")
+const userRepository = require('../database/repositories/user.repository');
 const { JWT_SECRET } = require('../config/env')
 const authService = require('../services/auth.service');
 
@@ -52,7 +52,7 @@ async function register(req, res, next) {
 async function login(req, res, next) {
   try {
     const { email, password } = req.body;
-    const user = await findUserByEmail(email)
+    const user = await userRepository.findUserByEmail(email)
 
     // 輸入錯誤資訊
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
@@ -99,7 +99,7 @@ function logout(req, res, next) {
 async function getUser(req, res, next) {
   try {
     const userId = req.user.userId;
-    const user = await findUserById(userId)
+    const user = await userRepository.findUserById(userId)
     if (!user) {
       return res.status(404).json({ status: false, message: '未找到符合的使用者' })
     }

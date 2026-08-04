@@ -1,9 +1,19 @@
 const db = require('../db');
 
+/**
+ * 移除重複的技能 UUID，避免同一筆技能被重複處理。
+ * @param {string[]} skillIds 技能 UUID 陣列
+ * @returns {string[]} 去重後的技能 UUID 陣列
+ */
 function uniqueSkillIds(skillIds) {
   return [...new Set(skillIds)];
 }
 
+/**
+ * 建立 repository 使用的資料不存在錯誤。
+ * @param {string} message 錯誤訊息
+ * @returns {Error} code 為 NOT_FOUND 的錯誤
+ */
 function createNotFoundError(message) {
   const error = new Error(message);
   error.code = 'NOT_FOUND';
@@ -11,6 +21,12 @@ function createNotFoundError(message) {
 }
 
 class FavoriteRepository {
+  /**
+   * 鎖定指定使用者資料，避免收藏交易期間發生競態條件。
+   * @param {string} userId 使用者 UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<void>}
+   */
   async lockUser(userId, executor = db) {
     const result = await executor.query(
       'SELECT id FROM users WHERE id = $1 FOR UPDATE',
@@ -19,6 +35,12 @@ class FavoriteRepository {
     if (!result.rows[0]) throw createNotFoundError('找不到使用者');
   }
 
+  /**
+   * 去重並鎖定指定技能資料，確保技能存在且鎖定順序固定。
+   * @param {string[]} skillIds 技能 UUID 陣列
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<string[]>} 去重並排序後的技能 UUID 陣列
+   */
   async lockSkills(skillIds, executor = db) {
     const ids = uniqueSkillIds(skillIds).sort();
     if (ids.length === 0) return [];
@@ -33,6 +55,13 @@ class FavoriteRepository {
     return ids;
   }
 
+  /**
+   * 取得指定使用者與技能的收藏關聯。
+   * @param {string} userId 使用者 UUID
+   * @param {string} skillId 技能 UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Object|null>} 收藏資料或 null
+   */
   async findByUserAndSkillId(userId, skillId, executor = db) {
     const result = await executor.query(
       'SELECT * FROM favorite WHERE user_id = $1 AND skill_item_id = $2',
@@ -41,6 +70,12 @@ class FavoriteRepository {
     return result.rows[0] || null;
   }
 
+  /**
+   * 取得指定使用者的完整收藏技能列表。
+   * @param {string} userId 使用者 UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Array>} 收藏技能資料陣列
+   */
   async findByUserId(userId, executor = db) {
     const result = await executor.query(
       `SELECT
@@ -58,6 +93,12 @@ class FavoriteRepository {
     return result.rows;
   }
 
+  /**
+   * 取得指定使用者收藏的技能 UUID。
+   * @param {string} userId 使用者 UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<string[]>} 技能 UUID 陣列
+   */
   async findSkillIdsByUserId(userId, executor = db) {
     const result = await executor.query(
       'SELECT skill_item_id FROM favorite WHERE user_id = $1 ORDER BY skill_item_id',
@@ -66,6 +107,13 @@ class FavoriteRepository {
     return result.rows.map((row) => row.skill_item_id);
   }
 
+  /**
+   * 新增收藏；已存在相同收藏時不重複寫入。
+   * @param {string} userId 使用者 UUID
+   * @param {string} skillId 技能 UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<void>}
+   */
   async addFavorite(userId, skillId, executor = db) {
     await executor.query(
       `INSERT INTO favorite (user_id, skill_item_id)
@@ -75,6 +123,13 @@ class FavoriteRepository {
     );
   }
 
+  /**
+   * 移除指定使用者與技能的收藏關聯。
+   * @param {string} userId 使用者 UUID
+   * @param {string} skillId 技能 UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<void>}
+   */
   async removeFavorite(userId, skillId, executor = db) {
     await executor.query(
       'DELETE FROM favorite WHERE user_id = $1 AND skill_item_id = $2',
@@ -82,10 +137,22 @@ class FavoriteRepository {
     );
   }
 
+  /**
+   * 移除指定使用者的全部收藏。
+   * @param {string} userId 使用者 UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<void>}
+   */
   async removeAllByUserId(userId, executor = db) {
     await executor.query('DELETE FROM favorite WHERE user_id = $1', [userId]);
   }
 
+  /**
+   * 重新計算指定技能的收藏總數。
+   * @param {string[]} skillIds 技能 UUID 陣列
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Map<string, number>>} 技能 UUID 與收藏總數對照表
+   */
   async recalculateFavoriteCounts(skillIds, executor = db) {
     const counts = new Map();
     for (const skillId of uniqueSkillIds(skillIds)) {

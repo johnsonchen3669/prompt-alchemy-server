@@ -19,6 +19,9 @@ CREATE TABLE
     sort_order INTEGER NOT NULL DEFAULT 0
   );
 
+-- seed.js 使用 ON CONFLICT (type, name)，因此資料庫必須具備相同欄位的唯一索引。
+CREATE UNIQUE INDEX IF NOT EXISTS idx_parameters_type_name_unique ON parameters(type, name);
+
 CREATE TABLE
   IF NOT EXISTS skill_item (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -45,6 +48,8 @@ CREATE TABLE
 
 CREATE INDEX IF NOT EXISTS idx_skill_item_category_id ON skill_item(category_id);
 CREATE INDEX IF NOT EXISTS idx_skill_item_is_active ON skill_item(is_active);
+-- PostgreSQL 的 UNIQUE index 允許多筆 NULL，並可供 seed.js 的 ON CONFLICT (slug) 使用。
+CREATE UNIQUE INDEX IF NOT EXISTS idx_skill_item_slug_unique ON skill_item(slug);
 
 CREATE TABLE
   IF NOT EXISTS favorite (
@@ -57,6 +62,16 @@ CREATE TABLE
   );
 
 CREATE INDEX IF NOT EXISTS idx_favorite_skill_item_id ON favorite(skill_item_id);
+
+CREATE TABLE IF NOT EXISTS faqs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question TEXT NOT NULL CHECK (length(btrim(question)) > 0),
+  answer TEXT NOT NULL CHECK (length(btrim(answer)) > 0),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  sort_order INTEGER NOT NULL DEFAULT 0 CHECK (sort_order >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE
   IF NOT EXISTS contacts (
