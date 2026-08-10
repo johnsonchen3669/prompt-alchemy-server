@@ -2,6 +2,8 @@
 
 本文件完整整理前端前台 (`Prompt-Alchemy`) 與後台管理介面 (`/admin`) 所需的所有 API 規格，提供給前後端工程師作為系統設計、開發與對接參考。
 
+> **2026-08-10 校對說明**：第 4、5、6、8 節已對照目前實際程式碼（`src/routes`／`src/controllers`）與正式環境資料庫（`agent_skill`／`favorite` 表）重新核對並修正——先前版本記錄的部分端點（例如 `PATCH /admin/skills/:id/active`、`POST /admin/users`、`GET /utility/categories`）**目前程式碼裡並不存在**，已標註清楚哪些是真的可以呼叫、哪些是尚未實作的落差，避免前端照著舊文件串接踩空。
+
 ---
 
 ## 📋 目錄
@@ -13,6 +15,7 @@
 6. [後台 Prompt / Skill 管理模組 (Admin Skills)](#6-後台-prompt--skill-管理模組-admin-skills)
 7. [後台分類標籤參數管理模組 (Admin Parameters)](#7-後台分類標籤參數管理模組-admin-parameters)
 8. [後台會員管理模組 (Admin Users)](#8-後台會員管理模組-admin-users)
+9. [前台 Agent Skills 模組 (Agent Skills Module)](#9-前台-agent-skills-模組-agent-skills-module)
 
 ---
 
@@ -245,37 +248,122 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 
 ## 4. 前台會員收藏清單模組 (Favorites Module)
 
-### 4.1 取得會員的收藏清單 ID 列表
+> **2026-08-11 更新**：04 號票（Skill 收藏通用化）已完成後端部分——`GET /favorites`、`GET /favorites/:skillId/status`、`POST /favorites/:skillId/toggle` 三支都新增了 `itemType` query 參數（允許值：`prompt`（預設）、`skill`），可以用同一組端點收藏/查詢 Agent Skill，不用另外開新路由。省略 `itemType` 時行為跟以前完全一樣（Prompt 收藏），既有前端串接不用改就能繼續動。`itemType=skill` 時，`skillId` 路徑參數要傳 Agent Skill 的 `id`（不是 Prompt 的 id），操作對象改成 `agent_skill.favorite_count`，跟 Prompt 的 `skill_item.favorite_count` 完全分開計算、互不影響。
+>
+> `DELETE /favorites`（清除全部收藏）與 `POST /favorites/defaults`（恢復預設收藏）**維持只操作 Prompt**，尚未擴充支援 `itemType`——呼叫這兩支不會影響、也不會清除 Skill 收藏。
+>
+> 前台「愛心圖示」「我的收藏頁 Skill 區塊」等 UI 尚未實作，屬於前端待辦，後端 API 已經備妥可以直接串接。
+
+### 4.1 取得我的收藏清單（完整資料，非僅 ID）
 * **Endpoint**: `GET /favorites`
 * **Auth**: `Authorization: Bearer <token>`
-* **Response (200 OK)**:
+* **Query Parameters (可選)**: `itemType`：`prompt`（預設）| `skill`
+* **Response (200 OK)，`itemType` 省略或 `prompt`**：回傳每筆已收藏 Prompt 的**完整資料**（不是只有 ID 陣列），欄位為資料庫原始 snake_case 命名，額外帶 `favorited_at`／`sort_order`／`category_name`：
   ```json
   {
     "status": "success",
     "data": [
-      "prompt-uuid-0001-0000-000000000001",
-      "prompt-uuid-0001-0000-000000000002"
+      {
+        "id": "9fcf96a4-eb05-4d4a-b7e2-fdb4b2da87f6",
+        "title": "後端 API 審查",
+        "slug": "backend-api-review",
+        "intro": "檢查 Express / Next.js API 的錯誤處理、安全性與回傳結構。",
+        "content_type_id": "62891464-fb7e-4295-b544-a3b78936722b",
+        "model_type": ["GPT-4"],
+        "prompt_content": "請你扮演資深後端工程師...",
+        "category_id": "5f40e0ac-86d0-4b9c-9573-351e9da96775",
+        "category_name": "後端開發",
+        "tags": ["Node.js"],
+        "copy_count": 125,
+        "favorite_count": 32,
+        "is_active": true,
+        "created_at": "2026-06-25T08:00:00Z",
+        "updated_at": "2026-06-25T08:00:00Z",
+        "favorited_at": "2026-08-01T09:00:00Z",
+        "sort_order": 0
+      }
+    ]
+  }
+  ```
+* **Response (200 OK)，`itemType=skill`**：回傳每筆已收藏 Agent Skill 的完整資料（欄位同第 9 節 `GET /agent-skills` 的單筆物件，但一樣是 snake_case），額外帶 `favorited_at`／`sort_order`：
+  ```json
+  {
+    "status": "success",
+    "data": [
+      {
+        "id": "agent-skill-uuid-0001",
+        "name": "matt",
+        "repo_owner": "mattpocock",
+        "repo_name": "skills",
+        "skill_slug": "*",
+        "category_name": "小工具",
+        "stargazers_count": 210731,
+        "favorite_count": 6,
+        "claude_install_method": true,
+        "codex_install_method": true,
+        "claude_plugin_name": "mattpocock-skills",
+        "claude_marketplace_name": "mattpocock",
+        "git_clone_method": false,
+        "doc_url": "https://raw.githubusercontent.com/mattpocock/skills/main/README.md",
+        "favorited_at": "2026-08-11T09:00:00Z",
+        "sort_order": 0
+      }
     ]
   }
   ```
 
-### 4.2 切換 / 更新收藏狀態
-* **Endpoint**: `POST /favorites/toggle`
+### 4.2 清除我的所有收藏
+* **Endpoint**: `DELETE /favorites`
 * **Auth**: `Authorization: Bearer <token>`
-* **Request Body**:
-  ```json
-  {
-    "promptId": "prompt-uuid-0001-0000-000000000001"
-  }
-  ```
-* **Response (200 OK)**:
+* **說明**：**不支援 `itemType`**，一律清除該使用者全部收藏（Prompt + Skill）。
+* **Response (200 OK)**：
   ```json
   {
     "status": "success",
-    "message": "收藏清單更新成功",
-    "data": [
-      "prompt-uuid-0001-0000-000000000001"
-    ]
+    "data": {
+      "favoriteIds": [],
+      "favoriteCounts": { "9fcf96a4-eb05-4d4a-b7e2-fdb4b2da87f6": 31 }
+    }
+  }
+  ```
+
+### 4.3 檢查單一 Prompt / Agent Skill 是否已收藏
+* **Endpoint**: `GET /favorites/:skillId/status`（`skillId` 是路徑參數：`itemType=prompt` 時傳 Prompt 的 `id`，`itemType=skill` 時傳 Agent Skill 的 `id`）
+* **Auth**: `Authorization: Bearer <token>`
+* **Query Parameters (可選)**: `itemType`：`prompt`（預設）| `skill`
+* **Response (200 OK)**：
+  ```json
+  { "status": "success", "data": { "isFavorited": true } }
+  ```
+
+### 4.4 切換收藏狀態（新增/取消）
+* **Endpoint**: `POST /favorites/:skillId/toggle`（`skillId` 是路徑參數，不是 Request Body；`itemType=prompt` 時傳 Prompt 的 `id`，`itemType=skill` 時傳 Agent Skill 的 `id`）
+* **Auth**: `Authorization: Bearer <token>`
+* **Query Parameters (可選)**: `itemType`：`prompt`（預設）| `skill`。`skill` 時切換完成後重算的是 `agent_skill.favorite_count`
+* **Response (200 OK)**：
+  ```json
+  {
+    "status": "success",
+    "data": { "isFavorited": true, "favoriteCount": 33 }
+  }
+  ```
+* **Response (400 Bad Request)**：`itemType` 不是 `prompt` 或 `skill`。
+  ```json
+  { "status": "error", "message": "itemType 必須是 prompt 或 skill" }
+  ```
+
+### 4.5 恢復預設收藏
+* **Endpoint**: `POST /favorites/defaults`
+* **Auth**: `Authorization: Bearer <token>`
+* **說明**：清空目前收藏後，寫回 `src/config/favorite.config.js` 定義的預設收藏清單。
+* **Response (200 OK)**：
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "favoriteIds": ["9fcf96a4-eb05-4d4a-b7e2-fdb4b2da87f6", "6d56531f-a28f-4ebe-977f-5d6222cab34e"],
+      "favoriteCounts": { "9fcf96a4-eb05-4d4a-b7e2-fdb4b2da87f6": 32 }
+    }
   }
   ```
 
@@ -479,3 +567,135 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 * **修改會員資料**: `PUT /admin/users/:id` (修改 name, role, email, isActive)
 * **切換啟用狀態**: `PATCH /admin/users/:id/active` (`{ "isActive": false }`)
 * **刪除會員**: `DELETE /admin/users/:id`
+
+---
+
+## 9. 前台 Agent Skills 模組 (Agent Skills Module)
+
+「Agent Skill」是可以安裝進 Claude Code / Codex 的技能套件（一份 `SKILL.md` + 附屬檔案），跟給人閱讀的 Prompt 是完全獨立的實體。本站**不代管、不鏡像**任何 Skill 內容，只存座標（來源 repo、分類等 metadata），實際安裝一律即時向 GitHub 抓取最新版本。
+
+### 安裝機制核心概念（串接 9.3 之前必看）
+
+每筆 Agent Skill 會用以下欄位描述「這支 Skill 在 Claude Code / Codex 上各自能不能裝、要用哪種方式裝」，全部由 Admin 人工判斷填寫：
+
+> **這兩個 agent 的安裝機制完全獨立、各自最多一種、不並存**：Claude Code 一律走 Claude Plugin（絕不是 npx），Codex 一律走 npx（絕不是 claude plugins）。同一個欄位（例如 `claudeInstallMethod`）只會決定「這個 agent 有沒有提供安裝」，機制本身是固定的，不是可選的。
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `claudeInstallMethod` | boolean | `true` 代表 Claude Code 提供安裝，**一律走 Claude Plugin**（`claude plugin marketplace add` or `claude plugin install`），**絕不產生 npx 指令**。`true` 時 `claudePluginName`／`claudeMarketplaceName` 一定都有填（雙向綁定，不會出現有一個沒填的情況） |
+| `codexInstallMethod` | boolean | `true` 代表 Codex 提供安裝，**一律走 npx**（`npx skills add ... -a codex`），Codex 沒有 plugin 機制 |
+| `claudePluginName` | string \| null | Claude Plugin 名稱。只有 `claudeInstallMethod=true` 時才會有值，`claudeInstallMethod=false` 時一定是 `null` |
+| `claudeMarketplaceName` | string \| null | 搭配 `claudePluginName` 一起用，兩者同進退（要嘛都填、要嘛都是 `null`） |
+| `gitCloneMethod` | boolean | `true` 代表兩個 agent 都不提供安裝（可能是 npx 會裝壞、也可能是該 repo 沒有對應的 Claude Plugin），改用 `git clone` 保底，不分 agent。這種情況下 `claudeInstallMethod`／`codexInstallMethod`／`claudePluginName`／`claudeMarketplaceName` 全部是 `false`／`null` |
+
+**`skillSlug` 補充**：只有 Codex（走 npx）才會用到這個欄位。大部分是單一 skill 的資料夾名稱（例如 `frontend-design`），少數代表「整個來源 repo 一次全裝」時會是萬用字元 `'*'`——前端不需要特別處理，畫面上顯示 `name`／`description` 即可，不用把 `skillSlug` 顯示給使用者看。
+
+**前端串接安裝功能的判斷邏輯**：
+
+1. 若 `gitCloneMethod === true` → **不需要讓使用者選擇目標 agent**，直接顯示一顆「複製 git clone 指令」按鈕即可（呼叫 9.3 的 API 時 `agent` 帶哪個值結果都一樣）。
+2. 否則，依 `claudeInstallMethod` / `codexInstallMethod` 決定要顯示哪些 agent 按鈕（兩個都 `true` 就顯示「Claude Code」「Codex」兩個按鈕；只有一個是 `true` 就只顯示那一個，避免使用者選了卻拿到空陣列）。
+3. 使用者選定 agent 後，呼叫 9.3 API 拿到 `commands` 陣列並顯示——**選 Claude Code 一定拿到 Claude Plugin 的兩行指令，選 Codex 一定拿到 npx 的一行指令，兩者不會混在一起，也不會同時出現**。
+
+### 9.1 取得上架中的 Agent Skill 列表
+* **Endpoint**: `GET /agent-skills`
+* **Auth**: 無需 Token
+* **Query Parameters (可選)**:
+  * `keyword`: 關鍵字搜尋（比對 name / intro）
+  * `categoryId`: 分類篩選 ID
+* **Response (200 OK)**:
+  ```json
+  {
+    "status": "success",
+    "data": [
+      {
+        "id": "agent-skill-uuid-0001",
+        "name": "matt",
+        "description": "Skills For Real Engineers",
+        "intro": "",
+        "repoOwner": "mattpocock",
+        "repoName": "skills",
+        "skillSlug": "*",
+        "creatorName": "mattpocock",
+        "creatorAvatarUrl": "https://avatars.githubusercontent.com/u/28293365?v=4",
+        "creatorProfileUrl": "https://github.com/mattpocock",
+        "license": "MIT",
+        "categoryId": "param-cat-tool",
+        "category": "小工具",
+        "stargazersCount": 210731,
+        "copyCount": 12,
+        "favoriteCount": 5,
+        "isHot": true,
+        "isActive": true,
+        "claudeInstallMethod": true,
+        "codexInstallMethod": true,
+        "claudePluginName": "mattpocock-skills",
+        "claudeMarketplaceName": "mattpocock",
+        "gitCloneMethod": false,
+        "docUrl": "https://raw.githubusercontent.com/mattpocock/skills/main/README.md",
+        "createdAt": "2026-08-01T08:00:00Z",
+        "updatedAt": "2026-08-01T08:00:00Z"
+      }
+    ]
+  }
+  ```
+  > 上面這筆 `skillSlug: "*"` 代表「整個 mattpocock/skills repo 一次全裝」，不是單一 skill——`matt`／`.NET Agent Skills`／`anthropic/skills` 這幾筆都是這種「整包」條目；`frontend-design`／`lazy-senior` 這種才是單一 skill 條目，`skillSlug` 會是真正的資料夾名稱。
+
+### 9.2 取得單一 Agent Skill 詳細內容
+* **Endpoint**: `GET /agent-skills/:id`
+* **Auth**: 無需 Token
+* **Response (200 OK)**: 欄位同 9.1 單筆物件。
+* **Response (404)**: 該 Skill 不存在或未上架。
+* **`docUrl` 說明**：若不是 `null`，是一個 `raw.githubusercontent.com` 的純文字網址（README.md 優先、沒有才用 SKILL.md），該網域**開放 CORS**，前端可以直接在瀏覽器用 `fetch(docUrl)` 拿到 Markdown 原文自行渲染，**不需要透過本站後端代理**。若為 `null`，代表尚未核實，請改顯示 `intro` 欄位，不要顯示空白區塊。
+
+### 9.3 依目標 agent 取得安裝指令 ⭐
+* **Endpoint**: `GET /agent-skills/:id/install-command`
+* **Auth**: 無需 Token
+* **Query Parameters (必填)**:
+  * `agent`: `claude-code` | `codex`（其他值會回 400）
+* **Response (200 OK)，`agent=claude-code`（一律 Claude Plugin，2 行）**：
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "commands": [
+        "claude plugin marketplace add mattpocock/skills",
+        "claude plugin install mattpocock-skills@mattpocock"
+      ]
+    }
+  }
+  ```
+* **Response (200 OK)，`agent=codex`（一律 npx，1 行）**：
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "commands": [
+        "npx skills add mattpocock/skills --skill '*' -a codex"
+      ]
+    }
+  }
+  ```
+  * `commands` 是**字串陣列**，每個字串是一行完整、可以直接複製貼上終端機執行的指令。陣列長度依情況而定：
+    * `agent=claude-code`：固定 2 行（`claude plugin marketplace add` + `claude plugin install`），如上例。
+    * `agent=codex`：固定 1 行 npx 指令。
+    * `gitCloneMethod=true`：固定 1 行 `git clone https://github.com/<owner>/<repo>.git`，不分 `agent` 帶哪個值。
+    * 若該 skill 對這個 agent 完全不提供安裝（例如 `claudeInstallMethod=false` 卻選了 `agent=claude-code`），會回傳**空陣列** `[]`——正常情況下前端不該讓使用者選到這個 agent（見上方判斷邏輯第 2 點），但仍要處理空陣列（顯示「此 Skill 不支援此 agent」之類的訊息，不要顯示空白區塊）。
+  * 請把整個陣列都顯示出來（例如用多行 code block），不要只取 `commands[0]`。
+* **Response (400 Bad Request)**：`agent` 不是 `claude-code` 或 `codex`。
+  ```json
+  { "status": "error", "message": "不支援的目標 Agent：xxx" }
+  ```
+* **Response (404 Not Found)**：Skill 不存在或未上架。
+
+### 9.4 增加安裝指令複製次數
+* **Endpoint**: `POST /agent-skills/:id/copy`
+* **Auth**: 無需 Token
+* **使用時機**：使用者按下「複製」按鈕、把 9.3 回傳的任一行指令複製到剪貼簿之後呼叫一次（不分是複製了 npx 版還是 plugin 版還是 git clone，同一顆按鈕、同一次複製動作只呼叫一次即可，這是單純的熱門度統計，不是每行分開計數）。
+* **Response (200 OK)**：
+  ```json
+  {
+    "status": "success",
+    "message": "複製次數已累加",
+    "data": { "id": "agent-skill-uuid-0001", "copyCount": 13 }
+  }
+  ```

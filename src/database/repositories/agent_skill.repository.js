@@ -64,6 +64,8 @@ class AgentSkillRepository {
       s.id, s.name, s.description, s.intro, s.repo_owner, s.repo_name, s.skill_slug,
       s.creator_name, s.creator_avatar_url, s.creator_profile_url, s.license,
       s.category_id, s.user_id, s.stargazers_count, s.copy_count, s.is_active,
+      s.claude_install_method, s.codex_install_method, s.claude_plugin_name,
+      s.claude_marketplace_name, s.git_clone_method, s.doc_url,
       s.created_at, s.updated_at,
       (
         SELECT COUNT(*)::integer FROM favorite f
@@ -149,11 +151,14 @@ class AgentSkillRepository {
       INSERT INTO agent_skill (
         name, description, intro, repo_owner, repo_name, skill_slug,
         creator_name, creator_avatar_url, creator_profile_url, license,
-        category_id, user_id, stargazers_count, is_active
+        category_id, user_id, stargazers_count, is_active,
+        claude_install_method, codex_install_method, claude_plugin_name,
+        claude_marketplace_name, git_clone_method, doc_url
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
-        $11, $12, $13, $14
+        $11, $12, $13, $14,
+        $15, $16, $17, $18, $19, $20
       ) RETURNING *
     `;
     const params = [
@@ -171,6 +176,12 @@ class AgentSkillRepository {
       data.userId,
       data.stargazersCount || 0,
       data.isActive ?? true,
+      data.claudeInstallMethod ?? true,
+      data.codexInstallMethod ?? true,
+      data.claudePluginName || null,
+      data.claudeMarketplaceName || null,
+      data.gitCloneMethod ?? false,
+      data.docUrl || null,
     ];
     const result = await db.query(sql, params);
     const newRow = result.rows[0];
@@ -194,6 +205,12 @@ class AgentSkillRepository {
       license: 'license',
       categoryId: 'category_id',
       stargazersCount: 'stargazers_count',
+      claudeInstallMethod: 'claude_install_method',
+      codexInstallMethod: 'codex_install_method',
+      claudePluginName: 'claude_plugin_name',
+      claudeMarketplaceName: 'claude_marketplace_name',
+      gitCloneMethod: 'git_clone_method',
+      docUrl: 'doc_url',
     };
 
     const updates = [];

@@ -41,6 +41,36 @@ class AgentSkillController {
   }
 
   /**
+   * 依目標 agent 取得這筆 Agent Skill 組好的安裝指令
+   * GET /agent-skills/:id/install-command?agent=claude-code
+   */
+  async getInstallCommands(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { agent } = req.query;
+      const commands = await agentSkillService.getInstallCommands(id, agent);
+      res.status(200).json({
+        status: 'success',
+        data: { commands },
+      });
+    } catch (error) {
+      if (error.message === '找不到該 Agent Skill') {
+        return res.status(404).json({
+          status: 'error',
+          message: error.message,
+        });
+      }
+      if (error.message.startsWith('不支援的目標 Agent')) {
+        return res.status(400).json({
+          status: 'error',
+          message: error.message,
+        });
+      }
+      next(error);
+    }
+  }
+
+  /**
    * 增加 Agent Skill 的安裝指令複製次數
    * POST /agent-skills/:id/copy
    */

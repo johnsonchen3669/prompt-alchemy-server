@@ -1,4 +1,5 @@
 const agentSkillRepository = require('../database/repositories/agent_skill.repository');
+const { buildInstallCommands } = require('./skillInstallCommand.service');
 
 class AgentSkillService {
   /**
@@ -24,6 +25,16 @@ class AgentSkillService {
       throw new Error('找不到該 Agent Skill');
     }
     return this._mapToApiFormat(row);
+  }
+
+  /**
+   * 依目標 agent 組出這筆 Agent Skill 的安裝指令
+   * @param {string} id
+   * @param {'claude-code'|'codex'} agent
+   */
+  async getInstallCommands(id, agent) {
+    const skill = await this.getAgentSkillById(id);
+    return buildInstallCommands([skill], agent);
   }
 
   /**
@@ -67,6 +78,12 @@ class AgentSkillService {
       favoriteCount: row.favorite_count || 0,
       isHot,
       isActive: row.is_active ?? true,
+      claudeInstallMethod: row.claude_install_method ?? false,
+      codexInstallMethod: row.codex_install_method ?? false,
+      claudePluginName: row.claude_plugin_name || null,
+      claudeMarketplaceName: row.claude_marketplace_name || null,
+      gitCloneMethod: row.git_clone_method ?? false,
+      docUrl: row.doc_url || null,
       createdAt: row.created_at || null,
       updatedAt: row.updated_at || null,
     };

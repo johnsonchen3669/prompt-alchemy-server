@@ -78,6 +78,48 @@ router.get(
   agentSkillController.getAgentSkillById
 );
 
+router.get(
+  '/:id/install-command',
+  /* #swagger.tags = ['Agent Skills']
+     #swagger.summary = '依目標 agent 取得組好的安裝指令'
+     #swagger.description = '依 claude_install_method/codex_install_method/claude_plugin_name/claude_marketplace_name/git_clone_method 規則組出可直接貼上終端機的安裝指令陣列。' */
+  /* #swagger.parameters['id'] = {
+       in: 'path',
+       description: 'Agent Skill ID (UUID)',
+       required: true,
+       type: 'string'
+  } */
+  /* #swagger.parameters['agent'] = {
+       in: 'query',
+       description: '目標 agent',
+       required: true,
+       type: 'string',
+       enum: ['claude-code', 'codex']
+  } */
+  /* #swagger.responses[200] = {
+       description: '成功組出安裝指令',
+       content: {
+         "application/json": {
+           schema: {
+             type: 'object',
+             properties: {
+               status: { type: 'string', example: 'success' },
+               data: {
+                 type: 'object',
+                 properties: {
+                   commands: { type: 'array', items: { type: 'string' } }
+                 }
+               }
+             }
+           }
+         }
+       }
+  } */
+  /* #swagger.responses[400] = { description: '不支援的目標 agent' } */
+  /* #swagger.responses[404] = { description: '找不到該 Agent Skill 或未上架' } */
+  agentSkillController.getInstallCommands
+);
+
 router.post(
   '/:id/copy',
   /* #swagger.tags = ['Agent Skills']

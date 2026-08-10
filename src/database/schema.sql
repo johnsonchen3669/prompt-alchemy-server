@@ -73,7 +73,37 @@ CREATE TABLE
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_agent_skill_repo_slug UNIQUE (repo_owner, repo_name, skill_slug)
+
+    -- claude_install_method=true 一律走 Claude Plugin 安裝（claude plugin
+    -- marketplace add + claude plugin install），絕不產生 npx；因此必須同時
+    -- 填 claude_plugin_name／claude_marketplace_name，兩者是雙向绑定的必要條件
+    -- （見下方 CHECK constraint 最後一行）。預設為 false：沒有查證過對應的
+    -- plugin 之前，不能貿然開啟。
+    claude_install_method BOOLEAN NOT NULL DEFAULT false,
+    -- codex_install_method=true 一律走 npx（Codex 沒有 plugin 機制，只有這一種）。
+    codex_install_method BOOLEAN NOT NULL DEFAULT true,
+    claude_plugin_name TEXT,
+    claude_marketplace_name TEXT,
+    git_clone_method BOOLEAN NOT NULL DEFAULT false,
+    -- README.md 優先、沒有才用 SKILL.md，擇一存完整 raw.githubusercontent.com
+    -- 網址（該網域開放 CORS，前端可直接 fetch 渲染，不必後端代管內容）。
+    -- Admin 人工判斷填寫，可為空（尚未核實時前台不顯示這塊）。
+    doc_url TEXT,
+    CONSTRAINT uq_agent_skill_repo_slug UNIQUE (repo_owner, repo_name, skill_slug),
+    CONSTRAINT agent_skill_install_method_check CHECK (
+      (
+        git_clone_method
+        AND NOT claude_install_method AND NOT codex_install_method
+        AND claude_plugin_name IS NULL AND claude_marketplace_name IS NULL
+      )
+      OR
+      (
+        NOT git_clone_method
+        AND (claude_install_method OR codex_install_method)
+        AND (claude_plugin_name IS NULL) = (claude_marketplace_name IS NULL)
+        AND claude_install_method = (claude_plugin_name IS NOT NULL)
+      )
+    )
   );
 
 CREATE INDEX IF NOT EXISTS idx_agent_skill_category_id ON agent_skill(category_id);
