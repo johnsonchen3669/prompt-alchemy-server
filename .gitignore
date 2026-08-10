@@ -6,3 +6,14 @@ node_modules/
 .env.production
 .pglite-data
 .claude/settings.local.json
+
+# --- H-System Mount (auto-added, do not commit) ---
+.h-system
+H-SYSTEM.md
+.h-system-selection.json
+CLAUDE.md
+AGENTS.md
+.claude/skills
+.agents/skills
+.scratch
+# --- H-System Mount (end) ---

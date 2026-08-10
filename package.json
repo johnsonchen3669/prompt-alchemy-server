@@ -15,7 +15,9 @@
     "dev:init": "node src/database/migrate.js",
     "dev:seed": "node src/database/seed.js",
     "dev:setup": "npm run dev:init && npm run dev:seed",
-    "dev:clear": "node -e \"require('fs').rmSync('.pglite-data', { recursive: true, force: true })\""
+    "dev:clear": "node -e \"require('fs').rmSync('.pglite-data', { recursive: true, force: true })\"",
+    "seed:skill": "node src/database/seed_skill.js",
+    "seed:skill:prod": "cross-env NODE_ENV=production node src/database/seed_skill.js"
   },
   "keywords": [],
   "author": "",
