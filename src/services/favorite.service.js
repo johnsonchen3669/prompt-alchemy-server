@@ -6,39 +6,81 @@ function toFavoriteCountsObject(counts) {
   return Object.fromEntries(counts);
 }
 
-async function isFavorited(userId, skillId) {
+async function isFavorited(userId, skillId, itemType = 'prompt') {
+  if (itemType === 'skill') {
+    const existing = await favoriteRepository.findByUserAndAgentSkillId(userId, skillId);
+    return !!existing;
+  }
   const existing = await favoriteRepository.findByUserAndSkillId(userId, skillId);
   return !!existing;
 }
 
-async function getMyFavorites(userId) {
+async function getMyFavorites(userId, itemType = 'prompt') {
+  if (itemType === 'skill') {
+    return favoriteRepository.findAgentSkillsByUserId(userId);
+  }
   return favoriteRepository.findByUserId(userId);
 }
 
-async function toggleFavorite(userId, skillId) {
-  return db.withTransaction(async (transaction) => {
-    await favoriteRepository.lockUser(userId, transaction);
-    await favoriteRepository.lockSkills([skillId], transaction);
+/**
+ * item_type='skill' 收藏切換：對應 Agent Skill 的鎖定／查詢／新增或移除／
+ * 重算 favorite_count，走 favoriteRepository 的 *AgentSkill* 系列方法，
+ * 完全不觸碰 Prompt 收藏（item_type='prompt'）用的方法與資料列。
+ */
+async function toggleSkillFavorite(userId, agentSkillId, transaction) {
+  await favoriteRepository.lockUser(userId, transaction);
+  await favoriteRepository.lockAgentSkills([agentSkillId], transaction);
 
-    const existing = await favoriteRepository.findByUserAndSkillId(
-      userId,
-      skillId,
-      transaction,
-    );
+  const existing = await favoriteRepository.findByUserAndAgentSkillId(
+    userId,
+    agentSkillId,
+    transaction,
+  );
 
-    if (existing) {
-      await favoriteRepository.removeFavorite(userId, skillId, transaction);
-    } else {
-      await favoriteRepository.addFavorite(userId, skillId, transaction);
-    }
+  if (existing) {
+    await favoriteRepository.removeSkillFavorite(userId, agentSkillId, transaction);
+  } else {
+    await favoriteRepository.addSkillFavorite(userId, agentSkillId, transaction);
+  }
 
-    const favoriteCount = (await favoriteRepository.recalculateFavoriteCounts(
-      [skillId],
-      transaction,
-    )).get(skillId);
+  const favoriteCount = (await favoriteRepository.recalculateAgentSkillFavoriteCounts(
+    [agentSkillId],
+    transaction,
+  )).get(agentSkillId);
 
-    return { isFavorited: !existing, favoriteCount };
-  });
+  return { isFavorited: !existing, favoriteCount };
+}
+
+async function togglePromptFavorite(userId, skillId, transaction) {
+  await favoriteRepository.lockUser(userId, transaction);
+  await favoriteRepository.lockSkills([skillId], transaction);
+
+  const existing = await favoriteRepository.findByUserAndSkillId(
+    userId,
+    skillId,
+    transaction,
+  );
+
+  if (existing) {
+    await favoriteRepository.removeFavorite(userId, skillId, transaction);
+  } else {
+    await favoriteRepository.addFavorite(userId, skillId, transaction);
+  }
+
+  const favoriteCount = (await favoriteRepository.recalculateFavoriteCounts(
+    [skillId],
+    transaction,
+  )).get(skillId);
+
+  return { isFavorited: !existing, favoriteCount };
+}
+
+async function toggleFavorite(userId, skillId, itemType = 'prompt') {
+  return db.withTransaction((transaction) => (
+    itemType === 'skill'
+      ? toggleSkillFavorite(userId, skillId, transaction)
+      : togglePromptFavorite(userId, skillId, transaction)
+  ));
 }
 
 async function clearMyFavorites(userId) {

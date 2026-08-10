@@ -14,6 +14,12 @@ router.get(
      #swagger.summary = '取得我的收藏清單'
      #swagger.description = '取得目前登入者的收藏 Prompt/Skill 完整資料，依收藏時間新到舊排序。回傳欄位為資料庫原始 snake_case 命名，並額外帶出 favorited_at、sort_order、category_name。'
      #swagger.security = [{ "bearerAuth": [] }] */
+  /* #swagger.parameters['itemType'] = {
+       in: 'query',
+       description: '收藏項目類型，允許的值：prompt（預設）、skill。skill 時回傳收藏的 Agent Skill 完整資料，不是 Prompt。',
+       required: false,
+       type: 'string'
+  } */
   /* #swagger.responses[200] = {
        description: '成功取得收藏清單',
        content: {
@@ -114,8 +120,14 @@ router.get(
      #swagger.security = [{ "bearerAuth": [] }] */
   /* #swagger.parameters['skillId'] = {
        in: 'path',
-       description: 'Prompt/Skill ID (UUID)',
+       description: 'Prompt ID，或 itemType=skill 時的 Agent Skill ID (UUID)',
        required: true,
+       type: 'string'
+  } */
+  /* #swagger.parameters['itemType'] = {
+       in: 'query',
+       description: '收藏項目類型，允許的值：prompt（預設）、skill。',
+       required: false,
        type: 'string'
   } */
   /* #swagger.responses[200] = {
@@ -152,8 +164,14 @@ router.post(
      #swagger.security = [{ "bearerAuth": [] }] */
   /* #swagger.parameters['skillId'] = {
        in: 'path',
-       description: 'Prompt/Skill ID (UUID)',
+       description: 'Prompt ID，或 itemType=skill 時的 Agent Skill ID (UUID)',
        required: true,
+       type: 'string'
+  } */
+  /* #swagger.parameters['itemType'] = {
+       in: 'query',
+       description: '收藏項目類型，允許的值：prompt（預設）、skill。skill 時同步反映 agent_skill.favorite_count，不影響 Prompt 的 favorite_count。',
+       required: false,
        type: 'string'
   } */
   /* #swagger.responses[200] = {

@@ -232,6 +232,29 @@ class FavoriteRepository {
     );
   }
 
+  /**
+   * 取得指定使用者收藏的 Agent Skill 完整清單。
+   * @param {string} userId 使用者 UUID
+   * @param {Object} executor 資料庫查詢執行器
+   * @returns {Promise<Array>} 收藏 Agent Skill 資料陣列
+   */
+  async findAgentSkillsByUserId(userId, executor = db) {
+    const result = await executor.query(
+      `SELECT
+         s.*,
+         f.created_at AS favorited_at,
+         f.sort_order,
+         cp.name AS category_name
+       FROM favorite f
+       JOIN agent_skill s ON s.id = f.skill_id
+       LEFT JOIN parameters cp ON cp.id = s.category_id AND cp.type = 'category'
+       WHERE f.user_id = $1 AND f.item_type = 'skill'
+       ORDER BY f.created_at DESC`,
+      [userId],
+    );
+    return result.rows;
+  }
+
   async removeAllByUserIdAndType(userId, itemType, executor = db) {
     await executor.query(
       'DELETE FROM favorite WHERE user_id = $1 AND item_type = $2',

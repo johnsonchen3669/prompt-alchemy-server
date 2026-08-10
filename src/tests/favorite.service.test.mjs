@@ -29,13 +29,28 @@ describe('favoriteService.isFavorited', () => {
     const result = await favoriteService.isFavorited('u1', 's1');
     expect(result).toBe(false);
   });
+
+  it('itemType=skill 時，改查 repository.findByUserAndAgentSkillId', async () => {
+    const spy = vi.spyOn(favoriteRepository, 'findByUserAndAgentSkillId').mockResolvedValue({ user_id: 'u1' });
+    const result = await favoriteService.isFavorited('u1', 'as1', 'skill');
+    expect(spy).toHaveBeenCalledWith('u1', 'as1');
+    expect(result).toBe(true);
+  });
 });
 
 describe('favoriteService.getMyFavorites', () => {
-  it('透傳給 repository.findByUserId', async () => {
+  it('itemType 省略或為 prompt 時，透傳給 repository.findByUserId', async () => {
     const rows = [{ id: 's1' }];
     const spy = vi.spyOn(favoriteRepository, 'findByUserId').mockResolvedValue(rows);
     const result = await favoriteService.getMyFavorites('u1');
+    expect(spy).toHaveBeenCalledWith('u1');
+    expect(result).toBe(rows);
+  });
+
+  it('itemType=skill 時，改呼叫 repository.findAgentSkillsByUserId', async () => {
+    const rows = [{ id: 'as1' }];
+    const spy = vi.spyOn(favoriteRepository, 'findAgentSkillsByUserId').mockResolvedValue(rows);
+    const result = await favoriteService.getMyFavorites('u1', 'skill');
     expect(spy).toHaveBeenCalledWith('u1');
     expect(result).toBe(rows);
   });
@@ -72,6 +87,39 @@ describe('favoriteService.toggleFavorite', () => {
     const result = await favoriteService.toggleFavorite('u1', 's1');
 
     expect(add).toHaveBeenCalledWith('u1', 's1', transaction);
+    expect(result).toEqual({ isFavorited: true, favoriteCount: 1 });
+  });
+
+  it('itemType=skill 且已存在時，移除 Agent Skill 收藏並重算 agent_skill.favorite_count', async () => {
+    mockTransaction();
+    vi.spyOn(favoriteRepository, 'lockUser').mockResolvedValue();
+    vi.spyOn(favoriteRepository, 'lockAgentSkills').mockResolvedValue(['as1']);
+    vi.spyOn(favoriteRepository, 'findByUserAndAgentSkillId').mockResolvedValue({ user_id: 'u1' });
+    const remove = vi.spyOn(favoriteRepository, 'removeSkillFavorite').mockResolvedValue();
+    const recalc = vi.spyOn(favoriteRepository, 'recalculateAgentSkillFavoriteCounts').mockResolvedValue(
+      new Map([['as1', 2]]),
+    );
+
+    const result = await favoriteService.toggleFavorite('u1', 'as1', 'skill');
+
+    expect(remove).toHaveBeenCalledWith('u1', 'as1', transaction);
+    expect(recalc).toHaveBeenCalledWith(['as1'], transaction);
+    expect(result).toEqual({ isFavorited: false, favoriteCount: 2 });
+  });
+
+  it('itemType=skill 且不存在時，新增 Agent Skill 收藏並重算 agent_skill.favorite_count', async () => {
+    mockTransaction();
+    vi.spyOn(favoriteRepository, 'lockUser').mockResolvedValue();
+    vi.spyOn(favoriteRepository, 'lockAgentSkills').mockResolvedValue(['as1']);
+    vi.spyOn(favoriteRepository, 'findByUserAndAgentSkillId').mockResolvedValue(null);
+    const add = vi.spyOn(favoriteRepository, 'addSkillFavorite').mockResolvedValue();
+    vi.spyOn(favoriteRepository, 'recalculateAgentSkillFavoriteCounts').mockResolvedValue(
+      new Map([['as1', 1]]),
+    );
+
+    const result = await favoriteService.toggleFavorite('u1', 'as1', 'skill');
+
+    expect(add).toHaveBeenCalledWith('u1', 'as1', transaction);
     expect(result).toEqual({ isFavorited: true, favoriteCount: 1 });
   });
 });

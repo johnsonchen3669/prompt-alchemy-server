@@ -16,29 +16,81 @@ afterEach(() => {
 });
 
 describe('favoriteController', () => {
-  it('toggleFavorite 以 userId 與 skillId 呼叫 service 並回傳 200', async () => {
+  it('toggleFavorite 未帶 itemType 時，預設以 prompt 呼叫 service 並回傳 200', async () => {
     const data = { isFavorited: true, favoriteCount: 1 };
     const spy = vi.spyOn(favoriteService, 'toggleFavorite').mockResolvedValue(data);
     const res = createResponse();
-    await toggleFavorite({ user: { userId: 'u1' }, params: { skillId: 's1' } }, res, vi.fn());
-    expect(spy).toHaveBeenCalledWith('u1', 's1');
+    await toggleFavorite({ user: { userId: 'u1' }, params: { skillId: 's1' }, query: {} }, res, vi.fn());
+    expect(spy).toHaveBeenCalledWith('u1', 's1', 'prompt');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ status: 'success', data });
   });
 
-  it('getMyFavorites 回傳 200 與收藏清單', async () => {
-    const data = [{ id: 's1' }];
-    vi.spyOn(favoriteService, 'getMyFavorites').mockResolvedValue(data);
+  it('toggleFavorite 帶 itemType=skill 時，以 skill 呼叫 service', async () => {
+    const data = { isFavorited: true, favoriteCount: 1 };
+    const spy = vi.spyOn(favoriteService, 'toggleFavorite').mockResolvedValue(data);
     const res = createResponse();
-    await getMyFavorites({ user: { userId: 'u1' } }, res, vi.fn());
+    await toggleFavorite(
+      { user: { userId: 'u1' }, params: { skillId: 'as1' }, query: { itemType: 'skill' } },
+      res,
+      vi.fn(),
+    );
+    expect(spy).toHaveBeenCalledWith('u1', 'as1', 'skill');
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('toggleFavorite 帶不合法的 itemType 時回傳 400，不呼叫 service', async () => {
+    const spy = vi.spyOn(favoriteService, 'toggleFavorite');
+    const res = createResponse();
+    await toggleFavorite(
+      { user: { userId: 'u1' }, params: { skillId: 's1' }, query: { itemType: 'bogus' } },
+      res,
+      vi.fn(),
+    );
+    expect(spy).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('getMyFavorites 未帶 itemType 時，預設以 prompt 呼叫 service 並回傳 200', async () => {
+    const data = [{ id: 's1' }];
+    const spy = vi.spyOn(favoriteService, 'getMyFavorites').mockResolvedValue(data);
+    const res = createResponse();
+    await getMyFavorites({ user: { userId: 'u1' }, query: {} }, res, vi.fn());
+    expect(spy).toHaveBeenCalledWith('u1', 'prompt');
     expect(res.json).toHaveBeenCalledWith({ status: 'success', data });
   });
 
-  it('checkFavoriteStatus 回傳 200 與 isFavorited', async () => {
-    vi.spyOn(favoriteService, 'isFavorited').mockResolvedValue(true);
+  it('getMyFavorites 帶 itemType=skill 時，以 skill 呼叫 service', async () => {
+    const data = [{ id: 'as1' }];
+    const spy = vi.spyOn(favoriteService, 'getMyFavorites').mockResolvedValue(data);
     const res = createResponse();
-    await checkFavoriteStatus({ user: { userId: 'u1' }, params: { skillId: 's1' } }, res, vi.fn());
+    await getMyFavorites({ user: { userId: 'u1' }, query: { itemType: 'skill' } }, res, vi.fn());
+    expect(spy).toHaveBeenCalledWith('u1', 'skill');
+    expect(res.json).toHaveBeenCalledWith({ status: 'success', data });
+  });
+
+  it('checkFavoriteStatus 未帶 itemType 時，預設以 prompt 呼叫 service 並回傳 200', async () => {
+    const spy = vi.spyOn(favoriteService, 'isFavorited').mockResolvedValue(true);
+    const res = createResponse();
+    await checkFavoriteStatus(
+      { user: { userId: 'u1' }, params: { skillId: 's1' }, query: {} },
+      res,
+      vi.fn(),
+    );
+    expect(spy).toHaveBeenCalledWith('u1', 's1', 'prompt');
     expect(res.json).toHaveBeenCalledWith({ status: 'success', data: { isFavorited: true } });
+  });
+
+  it('checkFavoriteStatus 帶 itemType=skill 時，以 skill 呼叫 service', async () => {
+    const spy = vi.spyOn(favoriteService, 'isFavorited').mockResolvedValue(false);
+    const res = createResponse();
+    await checkFavoriteStatus(
+      { user: { userId: 'u1' }, params: { skillId: 'as1' }, query: { itemType: 'skill' } },
+      res,
+      vi.fn(),
+    );
+    expect(spy).toHaveBeenCalledWith('u1', 'as1', 'skill');
+    expect(res.json).toHaveBeenCalledWith({ status: 'success', data: { isFavorited: false } });
   });
 
   it('clearMyFavorites 回傳 200 與清除結果', async () => {
@@ -63,7 +115,7 @@ describe('favoriteController', () => {
     vi.spyOn(favoriteService, 'toggleFavorite').mockRejectedValue(error);
     const res = createResponse();
     const next = vi.fn();
-    await toggleFavorite({ user: { userId: 'u1' }, params: { skillId: 's1' } }, res, next);
+    await toggleFavorite({ user: { userId: 'u1' }, params: { skillId: 's1' }, query: {} }, res, next);
     expect(next).toHaveBeenCalledWith(error);
     expect(res.status).not.toHaveBeenCalled();
   });

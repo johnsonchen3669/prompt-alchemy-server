@@ -21,10 +21,9 @@ describe('FavoriteRepository.findByUserAndSkillId', () => {
 
     const result = await favoriteRepository.findByUserAndSkillId('user-1', 'skill-1');
 
-    expect(querySpy).toHaveBeenCalledWith(
-      'SELECT * FROM favorite WHERE user_id = $1 AND skill_item_id = $2',
-      ['user-1', 'skill-1'],
-    );
+    const [sql, params] = querySpy.mock.calls[0];
+    expect(sql).toContain('WHERE user_id = $1 AND skill_item_id = $2 AND item_type = \'prompt\'');
+    expect(params).toEqual(['user-1', 'skill-1']);
     expect(result).toEqual(favorite);
   });
 
@@ -115,10 +114,10 @@ describe('FavoriteRepository.findSkillIdsByUserId', () => {
       query: vi.fn().mockResolvedValue({ rows: [{ skill_item_id: 's2' }, { skill_item_id: 's1' }] }),
     };
     const result = await favoriteRepository.findSkillIdsByUserId('u1', executor);
-    expect(executor.query).toHaveBeenCalledWith(
-      'SELECT skill_item_id FROM favorite WHERE user_id = $1 ORDER BY skill_item_id',
-      ['u1'],
-    );
+    const [sql, params] = executor.query.mock.calls[0];
+    expect(sql).toContain('WHERE user_id = $1 AND item_type = \'prompt\'');
+    expect(sql).toContain('ORDER BY skill_item_id');
+    expect(params).toEqual(['u1']);
     expect(result).toEqual(['s2', 's1']);
   });
 });
@@ -130,7 +129,7 @@ describe('FavoriteRepository.addFavorite / removeFavorite / removeAllByUserId', 
     const executor = { query: vi.fn().mockResolvedValue({ rows: [] }) };
     await favoriteRepository.addFavorite('u1', 's1', executor);
     expect(executor.query).toHaveBeenCalledWith(
-      expect.stringContaining('ON CONFLICT (user_id, skill_item_id) DO NOTHING'),
+      expect.stringContaining('ON CONFLICT (user_id, skill_item_id) WHERE item_type = \'prompt\' DO NOTHING'),
       ['u1', 's1'],
     );
   });
@@ -138,10 +137,9 @@ describe('FavoriteRepository.addFavorite / removeFavorite / removeAllByUserId', 
   it('removeFavorite 移除指定使用者與技能的收藏', async () => {
     const executor = { query: vi.fn().mockResolvedValue({ rows: [] }) };
     await favoriteRepository.removeFavorite('u1', 's1', executor);
-    expect(executor.query).toHaveBeenCalledWith(
-      'DELETE FROM favorite WHERE user_id = $1 AND skill_item_id = $2',
-      ['u1', 's1'],
-    );
+    const [sql, params] = executor.query.mock.calls[0];
+    expect(sql).toContain('WHERE user_id = $1 AND skill_item_id = $2 AND item_type = \'prompt\'');
+    expect(params).toEqual(['u1', 's1']);
   });
 
   it('removeAllByUserId 移除指定使用者的全部收藏', async () => {
@@ -151,6 +149,21 @@ describe('FavoriteRepository.addFavorite / removeFavorite / removeAllByUserId', 
       'DELETE FROM favorite WHERE user_id = $1',
       ['u1'],
     );
+  });
+});
+
+describe('FavoriteRepository.findAgentSkillsByUserId', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('以 JOIN 查詢使用者收藏的 Agent Skill 並依建立時間遞減排序', async () => {
+    const executor = { query: vi.fn().mockResolvedValue({ rows: [{ id: 'as1' }] }) };
+    const result = await favoriteRepository.findAgentSkillsByUserId('u1', executor);
+    const [sql, params] = executor.query.mock.calls[0];
+    expect(sql).toContain('JOIN agent_skill s');
+    expect(sql).toContain("item_type = 'skill'");
+    expect(sql).toContain('ORDER BY f.created_at DESC');
+    expect(params).toEqual(['u1']);
+    expect(result).toEqual([{ id: 'as1' }]);
   });
 });
 
