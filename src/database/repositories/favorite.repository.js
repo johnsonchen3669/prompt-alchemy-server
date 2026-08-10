@@ -2,13 +2,6 @@ const db = require('../db');
 
 function uniqueIds(ids) {
   return [...new Set(ids)];
-/**
- * 移除重複的技能 UUID，避免同一筆技能被重複處理。
- * @param {string[]} skillIds 技能 UUID 陣列
- * @returns {string[]} 去重後的技能 UUID 陣列
- */
-function uniqueSkillIds(skillIds) {
-  return [...new Set(skillIds)];
 }
 
 /**
