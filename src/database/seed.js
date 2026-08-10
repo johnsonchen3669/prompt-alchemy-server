@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const db = require('./db');
-const { createUser, findUserByEmail } = require('./repositories/user.repository');
+const userRepository = require('./repositories/user.repository');
 const favoriteRepository = require('./repositories/favorite.repository');
 const { DEFAULT_FAVORITE_SKILL_IDS } = require('../config/favorite.config');
 
@@ -180,16 +180,54 @@ const SEED_SKILLS = [
   }
 ];
 
+const SEED_FAQS = [
+  {
+    id: '60000000-0000-4000-a000-000000000001',
+    question: 'Prompt 鍊金坊是什麼？',
+    answer: 'Prompt 鍊金坊是一個整理與分享 AI Prompt、Skill 的收藏平台，讓使用者可以瀏覽、搜尋、複製及收藏常用內容。',
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: '60000000-0000-4000-a000-000000000002',
+    question: '沒有註冊帳號也可以瀏覽 Prompt 嗎？',
+    answer: '可以。未登入訪客可以瀏覽已公開的 Prompt；登入會員則可以使用收藏等個人化功能。',
+    is_active: true,
+    sort_order: 2,
+  },
+  {
+    id: '60000000-0000-4000-a000-000000000003',
+    question: '如何收藏喜歡的 Prompt？',
+    answer: '登入會員帳號後，在 Prompt 頁面點擊收藏按鈕，即可將內容加入個人收藏清單。',
+    is_active: true,
+    sort_order: 3,
+  },
+  {
+    id: '60000000-0000-4000-a000-000000000004',
+    question: '平台上的 Prompt 可以直接複製使用嗎？',
+    answer: '可以。你可以複製已公開的 Prompt，再依自己的使用情境調整內容後使用。',
+    is_active: true,
+    sort_order: 4,
+  },
+  {
+    id: '60000000-0000-4000-a000-000000000005',
+    question: '如果遇到問題或想提供建議，該如何聯絡？',
+    answer: '可以透過網站的聯絡表單提交問題或建議，管理者會在收到訊息後進行處理。',
+    is_active: true,
+    sort_order: 5,
+  },
+];
+
 async function seed() {
   console.log('[seed] 開始寫入種子資料...');
 
   // 1. Users
   const seededUserMap = new Map();
   for (const user of SEED_USERS) {
-    let existing = await findUserByEmail(user.email);
+    let existing = await userRepository.findUserByEmail(user.email);
     if (!existing) {
       const passwordHash = await bcrypt.hash(user.password, 10);
-      existing = await createUser({
+      existing = await userRepository.createUser({
         name: user.name,
         email: user.email,
         passwordHash,
@@ -247,7 +285,23 @@ async function seed() {
   }
   console.log(`[seed] 技能表 (skill_item) 共 ${SEED_SKILLS.length} 筆資料同步完成`);
 
-  // 4. Default Favorites for Member User
+  // 4. FAQs
+  for (const faq of SEED_FAQS) {
+    await db.query(
+      `INSERT INTO faqs (id, question, answer, is_active, sort_order)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE SET
+         question = EXCLUDED.question,
+         answer = EXCLUDED.answer,
+         is_active = EXCLUDED.is_active,
+         sort_order = EXCLUDED.sort_order,
+         updated_at = now()`,
+      [faq.id, faq.question, faq.answer, faq.is_active, faq.sort_order]
+    );
+  }
+  console.log(`[seed] FAQ 表 (faqs) 共 ${SEED_FAQS.length} 筆資料同步完成`);
+
+  // 5. Default Favorites for Member User
   const memberUser = seededUserMap.get('member@example.com');
   if (memberUser) {
     for (const skillId of DEFAULT_FAVORITE_SKILL_IDS) {

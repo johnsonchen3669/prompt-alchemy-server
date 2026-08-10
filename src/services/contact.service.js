@@ -1,19 +1,25 @@
 const contactRepository = require('../database/repositories/contact.repository');
 
+function createHttpError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
 class ContactService {
   async createContact({ name, email, message }) {
     if (!name || !name.trim()) {
-      throw new Error('請輸入名稱');
+      throw createHttpError('請輸入名稱', 400);
     }
     if (!email || !email.trim()) {
-      throw new Error('請輸入 Email');
+      throw createHttpError('請輸入 Email', 400);
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      throw new Error('請輸入有效的 Email 格式');
+      throw createHttpError('請輸入有效的 Email 格式', 400);
     }
     if (!message || !message.trim()) {
-      throw new Error('請輸入聯絡內容');
+      throw createHttpError('請輸入聯絡內容', 400);
     }
 
     return await contactRepository.create({
@@ -29,11 +35,11 @@ class ContactService {
 
   async updateContactStatus(id, status) {
     if (!['pending', 'resolved'].includes(status)) {
-      throw new Error('無效的處理狀態');
+      throw createHttpError('無效的處理狀態', 400);
     }
     const existing = await contactRepository.findById(id);
     if (!existing) {
-      throw new Error('找不到該聯絡紀錄');
+      throw createHttpError('找不到該聯絡紀錄', 404);
     }
     return await contactRepository.updateStatus(id, status);
   }
@@ -41,7 +47,7 @@ class ContactService {
   async deleteContact(id) {
     const existing = await contactRepository.findById(id);
     if (!existing) {
-      throw new Error('找不到該聯絡紀錄');
+      throw createHttpError('找不到該聯絡紀錄', 404);
     }
     return await contactRepository.delete(id);
   }
