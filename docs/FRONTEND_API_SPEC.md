@@ -3,6 +3,8 @@
 本文件完整整理前端前台 (`Prompt-Alchemy`) 與後台管理介面 (`/admin`) 所需的所有 API 規格，提供給前後端工程師作為系統設計、開發與對接參考。
 
 > **2026-08-10 校對說明**：第 4、5、6、8 節已對照目前實際程式碼（`src/routes`／`src/controllers`）與正式環境資料庫（`agent_skill`／`favorite` 表）重新核對並修正——先前版本記錄的部分端點（例如 `PATCH /admin/skills/:id/active`、`POST /admin/users`、`GET /utility/categories`）**目前程式碼裡並不存在**，已標註清楚哪些是真的可以呼叫、哪些是尚未實作的落差，避免前端照著舊文件串接踩空。
+>
+> **2026-08-11 新增**：05 號票（Recipe 管理）後端 API 已完成，新增第 10 節。前台可讓已登入會員建立自訂命名的 Recipe，把已收藏的 Agent Skill 加入一個或多個 Recipe，之後改名、刪除、檢視內容。**每個會員註冊時，後端會自動建立一個名稱固定為 `Default`、內容為空的 Recipe**，前端不需要另外呼叫 API 建立這個預設 Recipe，直接呼叫 10.1 清單就看得到。同時已補上 4.1 節 `GET /favorites?itemType=skill` 回傳物件的 `favorite_id` 欄位——串接 Recipe 加入/移除項目功能需要用到這個欄位，不是 Agent Skill 的 `id`，串接前請看第 10 節最上方的提示。
 
 ---
 
@@ -16,6 +18,7 @@
 7. [後台分類標籤參數管理模組 (Admin Parameters)](#7-後台分類標籤參數管理模組-admin-parameters)
 8. [後台會員管理模組 (Admin Users)](#8-後台會員管理模組-admin-users)
 9. [前台 Agent Skills 模組 (Agent Skills Module)](#9-前台-agent-skills-模組-agent-skills-module)
+10. [前台會員 Recipe 管理模組 (Recipes Module)](#10-前台會員-recipe-管理模組-recipes-module)
 
 ---
 
@@ -285,7 +288,7 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
     ]
   }
   ```
-* **Response (200 OK)，`itemType=skill`**：回傳每筆已收藏 Agent Skill 的完整資料（欄位同第 9 節 `GET /agent-skills` 的單筆物件，但一樣是 snake_case），額外帶 `favorited_at`／`sort_order`：
+* **Response (200 OK)，`itemType=skill`**：回傳每筆已收藏 Agent Skill 的完整資料（欄位同第 9 節 `GET /agent-skills` 的單筆物件，但一樣是 snake_case），額外帶 `favorite_id`（這筆收藏紀錄自己的 id，串接第 10 節 Recipe 的加入/移除項目 API 要用這個，不是 Agent Skill 的 `id`）／`favorited_at`／`sort_order`：
   ```json
   {
     "status": "success",
@@ -305,6 +308,7 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
         "claude_marketplace_name": "mattpocock",
         "git_clone_method": false,
         "doc_url": "https://raw.githubusercontent.com/mattpocock/skills/main/README.md",
+        "favorite_id": 42,
         "favorited_at": "2026-08-11T09:00:00Z",
         "sort_order": 0
       }
@@ -699,3 +703,142 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
     "data": { "id": "agent-skill-uuid-0001", "copyCount": 13 }
   }
   ```
+
+---
+
+## 10. 前台會員 Recipe 管理模組 (Recipes Module)
+
+「Recipe」是會員自己命名的收藏分類（例如「面試準備」「週報用」），底下可以放一個或多個**已收藏的 Agent Skill**。刪除 Recipe、或從 Recipe 移除項目，都**不會**取消該 Skill 本身的收藏狀態；反過來，加入 Recipe 前也**必須**該 Skill 已經被收藏過，沒收藏就加不進去。目前只支援 Agent Skill（`favorite.item_type='skill'`），不支援把 Prompt 收藏加進 Recipe。
+
+> **會員註冊會自動建立一個預設 Recipe**：名稱固定為 `Default`、底下沒有任何項目，不需要前端另外呼叫 10.2 建立。使用者可以直接對這個 Recipe 呼叫 10.4 改名或 10.5 刪除，跟自己建立的 Recipe 沒有差別待遇。
+>
+> **串接注意**：Recipe 的加入/移除項目 API（10.6／10.7）用的識別碼是 `favoriteId`（`favorite` 資料表這筆收藏紀錄自己的 `id`，型別是數字），**不是** Agent Skill 的 `id`（UUID）。這個 `favoriteId` 要從 4.1 節 `GET /favorites?itemType=skill` 回傳物件裡的 `favorite_id` 欄位拿，或是 10.3／10.6／10.7 回傳的 `items[].favorite_id`。
+
+### 10.1 取得我的 Recipe 清單
+* **Endpoint**: `GET /me/recipes`
+* **Auth**: `Authorization: Bearer <token>`
+* **Response (200 OK)**：依建立時間新到舊排序，只有 Recipe 本身的資料，不含底下的 Skill 清單（要看內容請呼叫 10.3）。新會員一開始至少會看到一筆 `name: "Default"` 的 Recipe：
+  ```json
+  {
+    "status": "success",
+    "data": [
+      {
+        "id": "9b1e2f3a-1111-4a2b-8c3d-4e5f6a7b8c9d",
+        "user_id": "user-uuid-0001",
+        "name": "面試準備",
+        "created_at": "2026-08-11T09:00:00Z",
+        "updated_at": "2026-08-11T09:00:00Z"
+      }
+    ]
+  }
+  ```
+
+### 10.2 建立 Recipe
+* **Endpoint**: `POST /me/recipes`
+* **Auth**: `Authorization: Bearer <token>`
+* **Request Body**:
+  ```json
+  { "name": "面試準備" }
+  ```
+* **Response (201 Created)**：
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "id": "9b1e2f3a-1111-4a2b-8c3d-4e5f6a7b8c9d",
+      "user_id": "user-uuid-0001",
+      "name": "面試準備",
+      "created_at": "2026-08-11T09:00:00Z",
+      "updated_at": "2026-08-11T09:00:00Z"
+    }
+  }
+  ```
+* **Response (400 Bad Request)**：`name` 空白或未帶。
+  ```json
+  { "status": "error", "message": "請輸入 Recipe 名稱" }
+  ```
+
+### 10.3 取得單一 Recipe 內容（含底下的 Skill 清單）
+* **Endpoint**: `GET /me/recipes/:id`
+* **Auth**: `Authorization: Bearer <token>`
+* **Response (200 OK)**：`items` 是這個 Recipe 底下的 Agent Skill 完整資料（欄位同 9.1 單筆物件，但一樣是 snake_case），額外帶 `favorite_id`（加入項目/移除項目要用的識別碼）與 `added_at`（加入 Recipe 的時間，不是收藏時間）：
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "id": "9b1e2f3a-1111-4a2b-8c3d-4e5f6a7b8c9d",
+      "user_id": "user-uuid-0001",
+      "name": "面試準備",
+      "created_at": "2026-08-11T09:00:00Z",
+      "updated_at": "2026-08-11T09:00:00Z",
+      "items": [
+        {
+          "id": "agent-skill-uuid-0001",
+          "name": "matt",
+          "repo_owner": "mattpocock",
+          "repo_name": "skills",
+          "skill_slug": "*",
+          "category_name": "小工具",
+          "stargazers_count": 210731,
+          "favorite_count": 6,
+          "claude_install_method": true,
+          "codex_install_method": true,
+          "claude_plugin_name": "mattpocock-skills",
+          "claude_marketplace_name": "mattpocock",
+          "git_clone_method": false,
+          "doc_url": "https://raw.githubusercontent.com/mattpocock/skills/main/README.md",
+          "favorite_id": 42,
+          "added_at": "2026-08-11T10:00:00Z"
+        }
+      ]
+    }
+  }
+  ```
+* **Response (404 Not Found)**：Recipe 不存在，或不屬於目前登入者。
+  ```json
+  { "status": "error", "message": "找不到指定的 Recipe" }
+  ```
+
+### 10.4 重新命名 Recipe
+* **Endpoint**: `PATCH /me/recipes/:id`
+* **Auth**: `Authorization: Bearer <token>`
+* **Request Body**:
+  ```json
+  { "name": "面試準備（更新版）" }
+  ```
+* **Response (200 OK)**：回傳更新後的 Recipe（欄位同 10.1 單筆物件）。
+* **Response (400 Bad Request)**：`name` 空白，訊息同 10.2。
+* **Response (404 Not Found)**：Recipe 不存在，或不屬於目前登入者，訊息同 10.3。
+
+### 10.5 刪除 Recipe
+* **Endpoint**: `DELETE /me/recipes/:id`
+* **Auth**: `Authorization: Bearer <token>`
+* **說明**：連帶清除這個 Recipe 底下所有的項目關聯（`skill_recipe_item`），**不影響**任何 Skill 本身的收藏狀態。
+* **Response (200 OK)**：
+  ```json
+  { "status": "success", "data": { "id": "9b1e2f3a-1111-4a2b-8c3d-4e5f6a7b8c9d", "deleted": true } }
+  ```
+* **Response (404 Not Found)**：Recipe 不存在，或不屬於目前登入者，訊息同 10.3。
+
+### 10.6 把已收藏的 Skill 加入 Recipe
+* **Endpoint**: `POST /me/recipes/:id/items`
+* **Auth**: `Authorization: Bearer <token>`
+* **Request Body**：`favoriteId` 是 `favorite` 這筆收藏紀錄自己的 `id`（見本節最上方「已知落差」），**不是** Agent Skill 的 `id`。
+  ```json
+  { "favoriteId": 42 }
+  ```
+* **Response (201 Created)**：回傳加入後、這個 Recipe 目前底下完整的 Skill 清單（陣列，欄位同 10.3 的 `items`）。
+* **Response (404 Not Found)**，兩種情況訊息不同：
+  * Recipe 不存在或不屬於自己：`{ "status": "error", "message": "找不到指定的 Recipe" }`
+  * `favoriteId` 對應的收藏不存在、不屬於自己、或不是 Agent Skill 收藏（`item_type` 不是 `skill`）：
+    ```json
+    { "status": "error", "message": "這個 Skill 尚未被收藏，無法加入 Recipe" }
+    ```
+* 已經在 Recipe 裡的項目重複加入不會報錯，也不會產生重複資料（後端用複合主鍵擋重複）。
+
+### 10.7 從 Recipe 移除項目
+* **Endpoint**: `DELETE /me/recipes/:id/items/:favoriteId`
+* **Auth**: `Authorization: Bearer <token>`
+* **說明**：`favoriteId` 是路徑參數，同 10.6 的 `favoriteId`。只會拿掉這個 Skill 跟這個 Recipe 的關聯，**不會**取消該 Skill 本身的收藏狀態，其他 Recipe 裡若也有加這個 Skill 也不受影響。
+* **Response (200 OK)**：回傳移除後、這個 Recipe 目前底下完整的 Skill 清單（欄位同 10.3 的 `items`）。
+* **Response (404 Not Found)**：Recipe 不存在或不屬於自己，訊息同 10.3。（`favoriteId` 對應的項目本來就不存在時不會報錯，視為操作成功，清單原樣回傳。）

@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const db = require('../database/db');
 const userRepository = require('../database/repositories/user.repository');
 const { createDefaultFavoritesForNewUser } = require('./favorite.service');
+const { createDefaultRecipeForNewUser } = require('./skillRecipe.service');
 
 function createEmailTakenError() {
   const error = new Error('email 已被使用');
@@ -19,6 +20,7 @@ async function register({ email, name, password }) {
 
       const createdUser = await userRepository.createUser({ email, name, passwordHash }, transaction);
       await createDefaultFavoritesForNewUser(createdUser.id, transaction);
+      await createDefaultRecipeForNewUser(createdUser.id, transaction);
       return createdUser;
     });
   } catch (error) {

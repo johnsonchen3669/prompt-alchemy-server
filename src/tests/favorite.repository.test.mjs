@@ -159,6 +159,7 @@ describe('FavoriteRepository.findAgentSkillsByUserId', () => {
     const executor = { query: vi.fn().mockResolvedValue({ rows: [{ id: 'as1' }] }) };
     const result = await favoriteRepository.findAgentSkillsByUserId('u1', executor);
     const [sql, params] = executor.query.mock.calls[0];
+    expect(sql).toContain('f.id AS favorite_id');
     expect(sql).toContain('JOIN agent_skill s');
     expect(sql).toContain("item_type = 'skill'");
     expect(sql).toContain('ORDER BY f.created_at DESC');

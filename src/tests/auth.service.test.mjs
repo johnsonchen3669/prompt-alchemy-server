@@ -3,17 +3,21 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 
-// auth.service 在載入時就會解構 favorite.service 的 createDefaultFavoritesForNewUser 到局部常數，
+// auth.service 在載入時就會解構 favorite.service／skillRecipe.service 的函式到局部常數，
 // 之後再 spyOn 已無法攔截。必須在 require auth.service 之前直接替換模組匯出屬性。
 const favoriteService = require('../services/favorite.service');
 const createDefaultFavoritesForNewUser = vi.fn();
 favoriteService.createDefaultFavoritesForNewUser = createDefaultFavoritesForNewUser;
 
+const skillRecipeService = require('../services/skillRecipe.service');
+const createDefaultRecipeForNewUser = vi.fn();
+skillRecipeService.createDefaultRecipeForNewUser = createDefaultRecipeForNewUser;
+
 const userRepository = require('../database/repositories/user.repository');
 const db = require('../database/db');
 const bcrypt = require('bcrypt');
 
-// 此時 require auth.service，它解構到的 createDefaultFavoritesForNewUser 是上面的 mock。
+// 此時 require auth.service，它解構到的都是上面替換過的 mock。
 const { register } = require('../services/auth.service');
 
 // 注入測試用的 transaction；auth.service 只會將它傳給 repository 與 favorite.service。
@@ -31,6 +35,8 @@ beforeEach(() => {
   createUser = vi.spyOn(userRepository, 'createUser');
   createDefaultFavoritesForNewUser.mockReset();
   createDefaultFavoritesForNewUser.mockResolvedValue();
+  createDefaultRecipeForNewUser.mockReset();
+  createDefaultRecipeForNewUser.mockResolvedValue();
 });
 
 afterEach(() => {
@@ -53,10 +59,11 @@ describe('authService.register', () => {
       transaction,
     );
     expect(createDefaultFavoritesForNewUser).toHaveBeenCalledWith('user-1', transaction);
+    expect(createDefaultRecipeForNewUser).toHaveBeenCalledWith('user-1', transaction);
     expect(result).toBe(createdUser);
   });
 
-  it('email 已存在時拋出 EMAIL_TAKEN 錯誤，且不建立使用者或預設收藏', async () => {
+  it('email 已存在時拋出 EMAIL_TAKEN 錯誤，且不建立使用者、預設收藏或預設 Recipe', async () => {
     findUserByEmail.mockResolvedValue({ id: 'user-existing', email: 'taken@example.com' });
 
     await expect(
@@ -65,6 +72,7 @@ describe('authService.register', () => {
 
     expect(createUser).not.toHaveBeenCalled();
     expect(createDefaultFavoritesForNewUser).not.toHaveBeenCalled();
+    expect(createDefaultRecipeForNewUser).not.toHaveBeenCalled();
   });
 
   it('資料庫唯一索引衝突（code 23505）轉為 EMAIL_TAKEN 錯誤', async () => {
@@ -98,5 +106,16 @@ describe('authService.register', () => {
     await expect(
       register({ email: 'new@example.com', name: '新人', password: 'secret' }),
     ).rejects.toThrow('預設收藏建立失敗');
+  });
+
+  it('建立預設 Recipe 失敗時會讓 withTransaction 重新拋出原始錯誤', async () => {
+    findUserByEmail.mockResolvedValue(null);
+    createUser.mockResolvedValue({ id: 'user-1', email: 'new@example.com', name: '新人' });
+    const recipeError = new Error('預設 Recipe 建立失敗');
+    createDefaultRecipeForNewUser.mockRejectedValueOnce(recipeError);
+
+    await expect(
+      register({ email: 'new@example.com', name: '新人', password: 'secret' }),
+    ).rejects.toThrow('預設 Recipe 建立失敗');
   });
 });

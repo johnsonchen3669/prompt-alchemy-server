@@ -242,6 +242,7 @@ class FavoriteRepository {
     const result = await executor.query(
       `SELECT
          s.*,
+         f.id AS favorite_id,
          f.created_at AS favorited_at,
          f.sort_order,
          cp.name AS category_name
