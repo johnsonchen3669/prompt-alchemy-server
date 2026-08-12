@@ -877,3 +877,28 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 * **說明**：`favoriteId` 是路徑參數，同 10.6 的 `favoriteId`。只會拿掉這個 Skill 跟這個 Recipe 的關聯，**不會**取消該 Skill 本身的收藏狀態，其他 Recipe 裡若也有加這個 Skill 也不受影響。
 * **Response (200 OK)**：回傳移除後、這個 Recipe 目前底下完整的 Skill 清單（欄位同 10.3 的 `items`）。
 * **Response (404 Not Found)**：Recipe 不存在或不屬於自己，訊息同 10.3。（`favoriteId` 對應的項目本來就不存在時不會報錯，視為操作成功，清單原樣回傳。）
+
+### 10.8 把整個 Recipe 一次組成批次安裝指令
+* **Endpoint**: `GET /me/recipes/:id/install-command`
+* **Auth**: `Authorization: Bearer <token>`
+* **Query Parameters (必填)**:
+  * `agent`: `claude-code` | `codex`（其他值會回 400）
+* **說明**：Recipe 檢視頁「複製全部安裝指令」用這支，規則跟 9.3 完全一致（同一支純函式產生），差別只在於輸入是整個 Recipe 底下的 Skill 清單，不是單一 Skill：
+  * 同一個 repo／同一個 plugin 的多筆 Skill 會合併，`agent=claude-code` 只產生一次 `claude plugin install`（依各筆的 `claudeMarketplaceName` 有無決定要不要多一行 `marketplace add`，Full package／Single kit 判斷邏輯同 9 節）；`agent=codex` 合併成一行、多個 `--skill`。
+  * 不同 repo／不同 plugin 的各自分開。
+  * 空 Recipe（沒有任何項目）回傳空陣列 `commands: []`，前端請顯示「這個 Recipe 還沒有任何 Skill」之類的訊息，不要顯示空白區塊。
+* **Response (200 OK)**：
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "commands": [
+        "claude plugin install mattpocock-skills",
+        "claude plugin marketplace add anthropics/skills",
+        "claude plugin install document-skills@anthropic-agent-skills"
+      ]
+    }
+  }
+  ```
+* **Response (400 Bad Request)**：`agent` 不是 `claude-code` 或 `codex`，訊息同 9.3。
+* **Response (404 Not Found)**：Recipe 不存在或不屬於自己，訊息同 10.3。

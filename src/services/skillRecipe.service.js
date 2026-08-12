@@ -1,5 +1,6 @@
 const skillRecipeRepository = require('../database/repositories/skill_recipe.repository');
 const skillRecipeItemRepository = require('../database/repositories/skill_recipe_item.repository');
+const { buildInstallCommands } = require('./skillInstallCommand.service');
 
 const DEFAULT_RECIPE_NAME = 'Default';
 
@@ -26,6 +27,33 @@ async function listMyRecipes(userId) {
  */
 async function listMyRecipeItems(userId) {
   return skillRecipeItemRepository.findAllByUserId(userId);
+}
+
+/**
+ * 依 skill_recipe_item.repository 回傳的 snake_case 欄位，轉成
+ * skillInstallCommand.service.buildInstallCommands 需要的 camelCase 輸入形狀
+ * （見 06 號票：重用 03 號票的指令組合純函式）。
+ */
+function toInstallCommandSkill(row) {
+  return {
+    repoOwner: row.repo_owner,
+    repoName: row.repo_name,
+    skillSlug: row.skill_slug,
+    claudeInstallMethod: row.claude_install_method,
+    codexInstallMethod: row.codex_install_method,
+    claudePluginName: row.claude_plugin_name,
+    claudeMarketplaceName: row.claude_marketplace_name,
+    gitCloneMethod: row.git_clone_method,
+  };
+}
+
+/**
+ * 把整個 Recipe 底下的 Skill 一次組成批次安裝指令（06 號票）。
+ */
+async function getInstallCommands(userId, recipeId, agent) {
+  await skillRecipeRepository.assertOwnedByUser(recipeId, userId);
+  const items = await skillRecipeItemRepository.findItemsByRecipeId(recipeId);
+  return buildInstallCommands(items.map(toInstallCommandSkill), agent);
 }
 
 async function getRecipeDetail(userId, recipeId) {
@@ -80,6 +108,7 @@ async function createDefaultRecipeForNewUser(userId, transaction) {
 module.exports = {
   listMyRecipes,
   listMyRecipeItems,
+  getInstallCommands,
   getRecipeDetail,
   createRecipe,
   renameRecipe,

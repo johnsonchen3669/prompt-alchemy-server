@@ -4,7 +4,8 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const skillRecipeService = require('../services/skillRecipe.service');
 const {
-  listMyRecipes, listMyRecipeItems, getRecipeDetail, createRecipe, renameRecipe, deleteRecipe, addItem, removeItem,
+  listMyRecipes, listMyRecipeItems, getRecipeDetail, createRecipe, renameRecipe, deleteRecipe,
+  addItem, removeItem, getInstallCommands,
 } = require('../controllers/skillRecipe.controller');
 
 function createResponse() {
@@ -135,6 +136,69 @@ describe('skillRecipeController.addItem', () => {
 
     await addItem(
       { user: { userId: 'u1' }, params: { id: 'r1' }, body: { favoriteId: 'f1' } },
+      res,
+      next,
+    );
+
+    expect(next).toHaveBeenCalledWith(error);
+  });
+});
+
+describe('skillRecipeController.getInstallCommands', () => {
+  it('以 params.id 與 query.agent 呼叫 service 並回傳 200 與 commands 陣列', async () => {
+    const commands = ['claude plugin install mattpocock-skills'];
+    const spy = vi.spyOn(skillRecipeService, 'getInstallCommands').mockResolvedValue(commands);
+    const res = createResponse();
+
+    await getInstallCommands(
+      { user: { userId: 'u1' }, params: { id: 'r1' }, query: { agent: 'claude-code' } },
+      res,
+      vi.fn(),
+    );
+
+    expect(spy).toHaveBeenCalledWith('u1', 'r1', 'claude-code');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ status: 'success', data: { commands } });
+  });
+
+  it('Recipe 不存在時回傳 404', async () => {
+    const error = Object.assign(new Error('找不到指定的 Recipe'), { code: 'NOT_FOUND' });
+    vi.spyOn(skillRecipeService, 'getInstallCommands').mockRejectedValue(error);
+    const res = createResponse();
+
+    await getInstallCommands(
+      { user: { userId: 'u1' }, params: { id: 'r1' }, query: { agent: 'claude-code' } },
+      res,
+      vi.fn(),
+    );
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ status: 'error', message: error.message });
+  });
+
+  it('不支援的 agent 回傳 400', async () => {
+    const error = new Error('不支援的目標 Agent：cursor');
+    vi.spyOn(skillRecipeService, 'getInstallCommands').mockRejectedValue(error);
+    const res = createResponse();
+
+    await getInstallCommands(
+      { user: { userId: 'u1' }, params: { id: 'r1' }, query: { agent: 'cursor' } },
+      res,
+      vi.fn(),
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ status: 'error', message: error.message });
+  });
+
+  it('其他未預期錯誤交給 next', async () => {
+    const error = new Error('db down');
+    vi.spyOn(skillRecipeService, 'getInstallCommands').mockRejectedValue(error);
+    const res = createResponse();
+    const next = vi.fn();
+
+    await getInstallCommands(
+      { user: { userId: 'u1' }, params: { id: 'r1' }, query: { agent: 'claude-code' } },
       res,
       next,
     );

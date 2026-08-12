@@ -77,6 +77,24 @@ async function addItem(req, res, next) {
   }
 }
 
+async function getInstallCommands(req, res, next) {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+    const { agent } = req.query;
+    const commands = await skillRecipeService.getInstallCommands(userId, id, agent);
+    res.status(200).json({ status: 'success', data: { commands } });
+  } catch (error) {
+    if (error.code === 'NOT_FOUND') {
+      return res.status(404).json({ status: 'error', message: error.message });
+    }
+    if (error.message.startsWith('不支援的目標 Agent')) {
+      return res.status(400).json({ status: 'error', message: error.message });
+    }
+    next(error);
+  }
+}
+
 async function removeItem(req, res, next) {
   try {
     const userId = req.user.userId;
@@ -97,4 +115,5 @@ module.exports = {
   deleteRecipe,
   addItem,
   removeItem,
+  getInstallCommands,
 };

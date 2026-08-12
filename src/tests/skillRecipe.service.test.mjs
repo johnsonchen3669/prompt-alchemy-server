@@ -34,6 +34,81 @@ describe('skillRecipeService.listMyRecipeItems', () => {
   });
 });
 
+describe('skillRecipeService.getInstallCommands', () => {
+  function makeItemRow(overrides = {}) {
+    return {
+      id: 'as1',
+      repo_owner: 'mattpocock',
+      repo_name: 'skills',
+      skill_slug: 'tdd',
+      claude_install_method: true,
+      codex_install_method: true,
+      claude_plugin_name: 'mattpocock-skills',
+      claude_marketplace_name: null,
+      git_clone_method: false,
+      favorite_id: 1,
+      ...overrides,
+    };
+  }
+
+  it('確認擁有權後，把 Recipe 底下同一個 plugin 的多筆 Skill 合併成一組安裝指令', async () => {
+    vi.spyOn(skillRecipeRepository, 'assertOwnedByUser').mockResolvedValue({ id: 'r1' });
+    vi.spyOn(skillRecipeItemRepository, 'findItemsByRecipeId').mockResolvedValue([
+      makeItemRow({ skill_slug: 'tdd' }),
+      makeItemRow({ skill_slug: 'code-review' }),
+    ]);
+
+    const result = await skillRecipeService.getInstallCommands('u1', 'r1', 'claude-code');
+
+    expect(result).toEqual(['claude plugin install mattpocock-skills']);
+  });
+
+  it('codex 目標把跨 repo 的多筆 Skill 各自分成一行', async () => {
+    vi.spyOn(skillRecipeRepository, 'assertOwnedByUser').mockResolvedValue({ id: 'r1' });
+    vi.spyOn(skillRecipeItemRepository, 'findItemsByRecipeId').mockResolvedValue([
+      makeItemRow({ skill_slug: 'tdd' }),
+      makeItemRow({
+        repo_owner: 'anthropics', repo_name: 'skills', skill_slug: 'frontend-design',
+        claude_plugin_name: null, claude_marketplace_name: null,
+      }),
+    ]);
+
+    const result = await skillRecipeService.getInstallCommands('u1', 'r1', 'codex');
+
+    expect(result).toEqual([
+      'npx skills add mattpocock/skills --skill tdd -a codex',
+      'npx skills add anthropics/skills --skill frontend-design -a codex',
+    ]);
+  });
+
+  it('空 Recipe（沒有任何項目）回傳空陣列', async () => {
+    vi.spyOn(skillRecipeRepository, 'assertOwnedByUser').mockResolvedValue({ id: 'r1' });
+    vi.spyOn(skillRecipeItemRepository, 'findItemsByRecipeId').mockResolvedValue([]);
+
+    const result = await skillRecipeService.getInstallCommands('u1', 'r1', 'claude-code');
+
+    expect(result).toEqual([]);
+  });
+
+  it('Recipe 不屬於該使用者時拋出 NOT_FOUND，不查詢項目', async () => {
+    const error = Object.assign(new Error('找不到指定的 Recipe'), { code: 'NOT_FOUND' });
+    vi.spyOn(skillRecipeRepository, 'assertOwnedByUser').mockRejectedValue(error);
+    const findItems = vi.spyOn(skillRecipeItemRepository, 'findItemsByRecipeId');
+
+    await expect(skillRecipeService.getInstallCommands('u1', 'r1', 'claude-code')).rejects.toBe(error);
+    expect(findItems).not.toHaveBeenCalled();
+  });
+
+  it('不支援的 agent 拋出錯誤', async () => {
+    vi.spyOn(skillRecipeRepository, 'assertOwnedByUser').mockResolvedValue({ id: 'r1' });
+    vi.spyOn(skillRecipeItemRepository, 'findItemsByRecipeId').mockResolvedValue([makeItemRow()]);
+
+    await expect(skillRecipeService.getInstallCommands('u1', 'r1', 'cursor')).rejects.toThrow(
+      '不支援的目標 Agent',
+    );
+  });
+});
+
 describe('skillRecipeService.getRecipeDetail', () => {
   it('回傳 Recipe 資料合併底下的 Skill 清單', async () => {
     vi.spyOn(skillRecipeRepository, 'assertOwnedByUser').mockResolvedValue({ id: 'r1', name: '常用' });

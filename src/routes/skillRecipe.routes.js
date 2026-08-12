@@ -48,6 +48,14 @@ router.delete(
   skillRecipeController.deleteRecipe
 );
 
+router.get(
+  '/:id/install-command',
+  /* #swagger.tags = ['Recipes']
+     #swagger.summary = '把整個 Recipe 底下的 Skill 一次組成批次安裝指令（06 號票，重用 03 號票的指令組合純函式）'
+     #swagger.security = [{ "bearerAuth": [] }] */
+  skillRecipeController.getInstallCommands
+);
+
 router.post(
   '/:id/items',
   /* #swagger.tags = ['Recipes']
