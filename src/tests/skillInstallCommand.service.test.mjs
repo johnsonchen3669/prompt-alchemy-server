@@ -140,8 +140,23 @@ describe('buildInstallCommands — codex 目標一律走 npx', () => {
   });
 });
 
+// git clone 保底的指令改成 curl | tar 直接解壓縮進當前目錄：不建立 .git、不用
+// git clone + cp + rm 三段式（Windows 上 rm -rf 剛 clone 完常撞到檔案還被短暫
+// 鎖住的 race condition，見 CONTEXT.md「Git Clone 保底」）。-k／--keep-old-files
+// 是 tar 內建的 no-clobber，已存在的檔案不會被覆寫。同時給 bash 與 PowerShell
+// 兩版（差別只在 curl／curl.exe，PowerShell 預設把 curl 別名成 Invoke-WebRequest，
+// 要用 curl.exe 繞過別名）。
+function gitCloneSnippet(repoKey) {
+  return [
+    '# Git Bash / WSL / macOS / Linux：',
+    `curl -fsSL https://github.com/${repoKey}/archive/HEAD.tar.gz | tar -xz --strip-components=1 -k`,
+    '# Windows PowerShell：',
+    `curl.exe -fsSL https://github.com/${repoKey}/archive/HEAD.tar.gz | tar -xz --strip-components=1 -k`,
+  ].join('\n');
+}
+
 describe('buildInstallCommands — git clone 保底', () => {
-  it('gitCloneMethod=true 時，只產生一條 git clone 指令，不分 agent', () => {
+  it('gitCloneMethod=true 時，只產生一組 curl | tar 指令（bash + PowerShell 兩版），不分 agent', () => {
     const skill = makeSkill({
       repoOwner: 'Wcc723',
       repoName: 'social-image-kit',
@@ -152,14 +167,14 @@ describe('buildInstallCommands — git clone 保底', () => {
       gitCloneMethod: true,
     });
     expect(buildInstallCommands([skill], 'claude-code')).toEqual([
-      'git clone https://github.com/Wcc723/social-image-kit.git',
+      gitCloneSnippet('Wcc723/social-image-kit'),
     ]);
     expect(buildInstallCommands([skill], 'codex')).toEqual([
-      'git clone https://github.com/Wcc723/social-image-kit.git',
+      gitCloneSnippet('Wcc723/social-image-kit'),
     ]);
   });
 
-  it('同一個 repo 的多筆 gitCloneMethod Skill 只產生一次 git clone 指令', () => {
+  it('同一個 repo 的多筆 gitCloneMethod Skill 只產生一次指令', () => {
     const result = buildInstallCommands(
       [
         makeSkill({
@@ -175,7 +190,7 @@ describe('buildInstallCommands — git clone 保底', () => {
       ],
       'claude-code',
     );
-    expect(result).toEqual(['git clone https://github.com/Wcc723/social-image-kit.git']);
+    expect(result).toEqual([gitCloneSnippet('Wcc723/social-image-kit')]);
   });
 });
 
@@ -193,7 +208,7 @@ describe('buildInstallCommands — 混合情境', () => {
       'claude-code',
     );
     expect(result).toEqual([
-      'git clone https://github.com/Wcc723/social-image-kit.git',
+      gitCloneSnippet('Wcc723/social-image-kit'),
       'claude plugin marketplace add mattpocock/skills',
       'claude plugin install mattpocock-skills@mattpocock',
     ]);

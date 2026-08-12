@@ -26,3 +26,28 @@ Schema 層級：`agent_skill_install_method_check` 拿掉 `(claude_plugin_name I
 新增 considered option：
 
 - 加欄位區分「官方 marketplace（Claude Code 內建、不需要 `marketplace add`）」與「第三方 marketplace（需要 `marketplace add`）」：現階段查證到的所有 Claude Plugin 資料（`dotnet`、`anthropics` 系列、`mattpocock`）都是第三方 marketplace，尚無官方 marketplace 的實際案例，暫不加欄位；一律「有 `claude_marketplace_name` 就輸出 `marketplace add` + `install`」。等真的出現官方 marketplace 案例再回頭處理。
+
+## Update（2026-08-12）：Git Clone 保底改用 curl + tar，不再用 `git clone`
+
+原定案的 `git_clone_method` 保底指令是單純 `git clone https://github.com/<repoOwner>/<repoName>.git`。實測發現兩個問題：
+
+1. **無法合併進使用者現有的 agent skill 目錄結構**：`git clone` 一定會把整個來源 repo 複製成一個新的巢狀資料夾（例如 `social-image-kit/`），沒辦法讓 repo 自帶的 `.claude/`、`.agents/` 直接跟使用者現有的同名目錄合併——這正是 git-clone 保底存在的目的（讓 skill 資料夾依賴的其他檔案一起裝進來），卻反而讓使用者要手動搬移檔案。
+2. **`git clone` + `cp` 複製 + `rm -rf` 清理暫存資料夾的三段式做法在 Windows 上不穩定**：`rm -rf` 緊接在 `git clone` 完成後執行，實測（`Wcc723/social-image-kit`）常撞到 `.git` 內的檔案還被防毒軟體或 Git 背景程序短暫鎖住的 race condition，噴 `Device or resource busy`，雖然單獨重跑通常會成功，但不適合放進使用者複製貼上就要能一次成功的保底指令。
+
+最終定案：改用 `curl` 下載 GitHub tarball、`tar` 解壓縮直接進當前目錄，兩者都查證過對這次的真實案例（`Wcc723/social-image-kit`）可行：
+
+```
+curl -fsSL https://github.com/<repoOwner>/<repoName>/archive/HEAD.tar.gz | tar -xz --strip-components=1 -k
+```
+
+- `archive/HEAD.tar.gz`：已查證 GitHub 支援用 `HEAD` 代表預設分支（`Wcc723/social-image-kit` 實測回應 `HTTP 200`，且 `gh api` 查到的 `default_branch` 是 `main`，兩者一致），不需要額外查詢分支名稱。
+- `--strip-components=1`：去掉 GitHub tarball 自動加的 `<repoName>-<sha>/` 外殼，內容直接落在目前目錄，達成跟使用者現有目錄合併的效果。
+- `-k`（`--keep-old-files`）：tar 內建的 no-clobber 選項，目前目錄已存在的檔案不會被覆寫，取代原本要另外寫 `cp -rn` 的必要。
+- 完全不建立 `.git`，因此也不需要 `rm -rf` 清理，根本避開 race condition。
+
+同時提供 **bash**（`curl`）與 **PowerShell**（`curl.exe`）兩版指令，兩者都在 Windows 上實測驗證過（bash 版由使用者在 Git Bash 實測；PowerShell 版用 `robocopy` 方案 A/B 比較後，改用同一套 curl+tar 方案，只有 `curl` 換成 `curl.exe` 一個差異——PowerShell 預設把 `curl` 別名成 `Invoke-WebRequest`，語法完全不同，要用 `curl.exe` 明確繞過別名才會呼叫到真正的 curl）。兩版指令都回傳在同一個 `commands` 陣列元素裡（用 `\n` 換行、`#` 開頭的註解行分隔），不新增 API 參數。
+
+新增 considered option：
+
+- 新增 `shell=bash|powershell` query 參數，讓前端仿照 `agent` 選擇器做一個 shell 切換 UI：討論過，但 git-clone 保底是「保底中的保底」，不值得為它在 API 契約上加一個新維度；兩版指令都不長，直接都顯示、讓使用者自己認得自己的終端機環境更簡單。
+- 只取 skill 需要的子資料夾（例如用 `npx degit <repo>/<skillSlug>` 或 tar 只解壓縮子路徑）：討論過，但這剛好會重現 git-clone 保底存在的理由——這些 skill 之所以不能用 `npx skills add --skill` 裝，正是因為它們依賴 repo 根目錄的其他檔案，只取子資料夾會重新製造出一樣的破損。

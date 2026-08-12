@@ -69,7 +69,10 @@ describe('AgentSkillService.getInstallCommands', () => {
       }),
     );
     const result = await agentSkillService.getInstallCommands('s1', 'codex');
-    expect(result).toEqual(['git clone https://github.com/Wcc723/social-image-kit.git']);
+    expect(result[0]).toContain(
+      'curl -fsSL https://github.com/Wcc723/social-image-kit/archive/HEAD.tar.gz | tar -xz --strip-components=1 -k',
+    );
+    expect(result[0]).toContain('curl.exe -fsSL');
   });
 
   it('查無該 Skill 時拋出錯誤', async () => {
