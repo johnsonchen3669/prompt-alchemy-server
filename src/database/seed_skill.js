@@ -145,9 +145,11 @@ const SEED_AGENT_SKILLS = [
     stargazersCount: 210731,
     claudeInstallMethod: true,
     codexInstallMethod: true,
-    // marketplace.json 唯一的 plugin，source 就是整個 repo 根目錄。
+    // marketplace.json 唯一的 plugin，source 就是整個 repo 根目錄，整包安裝
+    // （Full package）：claude plugin install mattpocock-skills，不需要
+    // marketplace_name（見 ADR-0001 Update）。
     claudePluginName: 'mattpocock-skills',
-    claudeMarketplaceName: 'mattpocock',
+    claudeMarketplaceName: null,
     gitCloneMethod: false,
     // 這筆代表整個 repo（非單一 skill 資料夾），用 repo 根目錄 README.md。
     docUrl: 'https://raw.githubusercontent.com/mattpocock/skills/main/README.md',

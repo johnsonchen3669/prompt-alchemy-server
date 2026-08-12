@@ -100,8 +100,8 @@ CREATE TABLE
       (
         NOT git_clone_method
         AND (claude_install_method OR codex_install_method)
-        AND (claude_plugin_name IS NULL) = (claude_marketplace_name IS NULL)
         AND claude_install_method = (claude_plugin_name IS NOT NULL)
+        AND (claude_marketplace_name IS NULL OR claude_plugin_name IS NOT NULL)
       )
     )
   );

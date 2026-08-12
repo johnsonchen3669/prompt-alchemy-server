@@ -53,6 +53,25 @@ describe('buildInstallCommands — claude-code 目標一律走 Claude Plugin', (
     ]);
   });
 
+  it('claudeMarketplaceName=null 時（整包安裝 Full package），只產生 install 一行，不含 marketplace add', () => {
+    const result = buildInstallCommands(
+      [makeSkill({ claudeMarketplaceName: null })],
+      'claude-code',
+    );
+    expect(result).toEqual(['claude plugin install mattpocock-skills']);
+  });
+
+  it('同一個 plugin_name（皆無 marketplace）多筆 Skill，只產生一次 install', () => {
+    const result = buildInstallCommands(
+      [
+        makeSkill({ claudeMarketplaceName: null, skillSlug: 'tdd' }),
+        makeSkill({ claudeMarketplaceName: null, skillSlug: 'code-review' }),
+      ],
+      'claude-code',
+    );
+    expect(result).toEqual(['claude plugin install mattpocock-skills']);
+  });
+
   it('不同 repo 的不同 plugin，各自產生一組 marketplace add + install', () => {
     const result = buildInstallCommands(
       [

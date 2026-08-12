@@ -584,12 +584,17 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 
 > **這兩個 agent 的安裝機制完全獨立、各自最多一種、不並存**：Claude Code 一律走 Claude Plugin（絕不是 npx），Codex 一律走 npx（絕不是 claude plugins）。同一個欄位（例如 `claudeInstallMethod`）只會決定「這個 agent 有沒有提供安裝」，機制本身是固定的，不是可選的。
 
+**Claude Plugin 安裝有兩種形狀**（差別在 `claudeMarketplaceName` 有沒有值，前端據此在 SkillCard 顯示 **Full package／Single kit** 徽章）：
+
+* **整包安裝 Full package**（`claudeMarketplaceName === null`）：`claude plugin install <claudePluginName>` 一行。例：`claude plugin install mattpocock-skills`
+* **單一元件安裝 Single kit**（`claudeMarketplaceName` 有值）：`claude plugin marketplace add <repoOwner>/<repoName>` + `claude plugin install <claudePluginName>@<claudeMarketplaceName>` 兩行。例：`claude plugin install frontend-design@claude-plugins-official`
+
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `claudeInstallMethod` | boolean | `true` 代表 Claude Code 提供安裝，**一律走 Claude Plugin**（`claude plugin marketplace add` or `claude plugin install`），**絕不產生 npx 指令**。`true` 時 `claudePluginName`／`claudeMarketplaceName` 一定都有填（雙向綁定，不會出現有一個沒填的情況） |
+| `claudeInstallMethod` | boolean | `true` 代表 Claude Code 提供安裝，**一律走 Claude Plugin**（`claude plugin install`，視 `claudeMarketplaceName` 有無決定要不要加一行 `claude plugin marketplace add`），**絕不產生 npx 指令**。`true` 時 `claudePluginName` 一定有填（雙向綁定） |
 | `codexInstallMethod` | boolean | `true` 代表 Codex 提供安裝，**一律走 npx**（`npx skills add ... -a codex`），Codex 沒有 plugin 機制 |
 | `claudePluginName` | string \| null | Claude Plugin 名稱。只有 `claudeInstallMethod=true` 時才會有值，`claudeInstallMethod=false` 時一定是 `null` |
-| `claudeMarketplaceName` | string \| null | 搭配 `claudePluginName` 一起用，兩者同進退（要嘛都填、要嘛都是 `null`） |
+| `claudeMarketplaceName` | string \| null | **選填**，與 `claudePluginName` 不再雙向綁定：`null` 代表整包安裝（Full package，見上），有值代表單一元件安裝（Single kit，見上）。只有 `claudePluginName` 有值時 `claudeMarketplaceName` 才可能有值 |
 | `gitCloneMethod` | boolean | `true` 代表兩個 agent 都不提供安裝（可能是 npx 會裝壞、也可能是該 repo 沒有對應的 Claude Plugin），改用 `git clone` 保底，不分 agent。這種情況下 `claudeInstallMethod`／`codexInstallMethod`／`claudePluginName`／`claudeMarketplaceName` 全部是 `false`／`null` |
 
 **`skillSlug` 補充**：只有 Codex（走 npx）才會用到這個欄位。大部分是單一 skill 的資料夾名稱（例如 `frontend-design`），少數代表「整個來源 repo 一次全裝」時會是萬用字元 `'*'`——前端不需要特別處理，畫面上顯示 `name`／`description` 即可，不用把 `skillSlug` 顯示給使用者看。
@@ -598,7 +603,7 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 
 1. 若 `gitCloneMethod === true` → **不需要讓使用者選擇目標 agent**，直接顯示一顆「複製 git clone 指令」按鈕即可（呼叫 9.3 的 API 時 `agent` 帶哪個值結果都一樣）。
 2. 否則，依 `claudeInstallMethod` / `codexInstallMethod` 決定要顯示哪些 agent 按鈕（兩個都 `true` 就顯示「Claude Code」「Codex」兩個按鈕；只有一個是 `true` 就只顯示那一個，避免使用者選了卻拿到空陣列）。
-3. 使用者選定 agent 後，呼叫 9.3 API 拿到 `commands` 陣列並顯示——**選 Claude Code 一定拿到 Claude Plugin 的兩行指令，選 Codex 一定拿到 npx 的一行指令，兩者不會混在一起，也不會同時出現**。
+3. 使用者選定 agent 後，呼叫 9.3 API 拿到 `commands` 陣列並顯示——**選 Claude Code 拿到 Claude Plugin 指令（Full package 1 行／Single kit 2 行），選 Codex 一定拿到 npx 的一行指令，兩者不會混在一起，也不會同時出現**。
 
 ### 9.1 取得上架中的 Agent Skill 列表
 * **Endpoint**: `GET /agent-skills`
@@ -633,7 +638,7 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
         "claudeInstallMethod": true,
         "codexInstallMethod": true,
         "claudePluginName": "mattpocock-skills",
-        "claudeMarketplaceName": "mattpocock",
+        "claudeMarketplaceName": null,
         "gitCloneMethod": false,
         "docUrl": "https://raw.githubusercontent.com/mattpocock/skills/main/README.md",
         "createdAt": "2026-08-01T08:00:00Z",
@@ -643,6 +648,7 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
   }
   ```
   > 上面這筆 `skillSlug: "*"` 代表「整個 mattpocock/skills repo 一次全裝」，不是單一 skill——`matt`／`.NET Agent Skills`／`anthropic/skills` 這幾筆都是這種「整包」條目；`frontend-design`／`lazy-senior` 這種才是單一 skill 條目，`skillSlug` 會是真正的資料夾名稱。
+  > 這筆 `claudeMarketplaceName: null` 對應 **Full package** 形狀（`claude plugin install mattpocock-skills`，1 行）；`frontend-design@claude-plugins-official` 這種 `claudeMarketplaceName` 有值的才是 **Single kit** 形狀（2 行，見 9.3）。
 
 ### 9.2 取得單一 Agent Skill 詳細內容
 * **Endpoint**: `GET /agent-skills/:id`
@@ -656,14 +662,25 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 * **Auth**: 無需 Token
 * **Query Parameters (必填)**:
   * `agent`: `claude-code` | `codex`（其他值會回 400）
-* **Response (200 OK)，`agent=claude-code`（一律 Claude Plugin，2 行）**：
+* **Response (200 OK)，`agent=claude-code`，Full package（`claudeMarketplaceName=null`，1 行）**：
   ```json
   {
     "status": "success",
     "data": {
       "commands": [
-        "claude plugin marketplace add mattpocock/skills",
-        "claude plugin install mattpocock-skills@mattpocock"
+        "claude plugin install mattpocock-skills"
+      ]
+    }
+  }
+  ```
+* **Response (200 OK)，`agent=claude-code`，Single kit（`claudeMarketplaceName` 有值，2 行）**：
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "commands": [
+        "claude plugin marketplace add anthropics/skills",
+        "claude plugin install document-skills@anthropic-agent-skills"
       ]
     }
   }
@@ -680,7 +697,7 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
   }
   ```
   * `commands` 是**字串陣列**，每個字串是一行完整、可以直接複製貼上終端機執行的指令。陣列長度依情況而定：
-    * `agent=claude-code`：固定 2 行（`claude plugin marketplace add` + `claude plugin install`），如上例。
+    * `agent=claude-code`：依 `claudeMarketplaceName` 有無決定 1 行（Full package，只有 `claude plugin install`）或 2 行（Single kit，多一行 `claude plugin marketplace add`），如上兩例。
     * `agent=codex`：固定 1 行 npx 指令。
     * `gitCloneMethod=true`：固定 1 行 `git clone https://github.com/<owner>/<repo>.git`，不分 `agent` 帶哪個值。
     * 若該 skill 對這個 agent 完全不提供安裝（例如 `claudeInstallMethod=false` 卻選了 `agent=claude-code`），會回傳**空陣列** `[]`——正常情況下前端不該讓使用者選到這個 agent（見上方判斷邏輯第 2 點），但仍要處理空陣列（顯示「此 Skill 不支援此 agent」之類的訊息，不要顯示空白區塊）。
@@ -732,6 +749,24 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
     ]
   }
   ```
+
+### 10.1a 一次取得我名下所有 Recipe 的收藏配對（效能優化，加速收藏清單頁的 Recipe 標籤）
+
+* **Endpoint**: `GET /me/recipe-items`
+* **Auth**: `Authorization: Bearer <token>`
+* **使用時機**：收藏清單頁要在每一筆收藏旁邊標示「屬於哪些 Recipe」時，**用這支端點一次拿全部配對**，前端在本地組出 `favoriteId → [recipeId, ...]` 的對照表，不要為了同樣的目的對每個 Recipe 各呼叫一次 10.3（那樣是 1+N 次請求，Recipe 一多畫面會明顯變慢）。
+* **Response (200 OK)**：陣列，每個元素是一組配對，沒有巢狀結構：
+  ```json
+  {
+    "status": "success",
+    "data": [
+      { "recipe_id": "9b1e2f3a-1111-4a2b-8c3d-4e5f6a7b8c9d", "favorite_id": 42 },
+      { "recipe_id": "9b1e2f3a-1111-4a2b-8c3d-4e5f6a7b8c9d", "favorite_id": 43 },
+      { "recipe_id": "a2c3d4e5-2222-4a2b-8c3d-4e5f6a7b8c9e", "favorite_id": 42 }
+    ]
+  }
+  ```
+  > 上例代表 `favorite_id: 42` 同時被加進了兩個 Recipe，`favorite_id: 43` 只在第一個 Recipe 裡。
 
 ### 10.2 建立 Recipe
 * **Endpoint**: `POST /me/recipes`

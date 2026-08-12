@@ -11,3 +11,18 @@
 - 只做 npx、把 Claude Plugin 與 git-clone 排除在範疇外：最簡單，但會漏掉「npx 裝了會壞」的真實案例（social-image-kit），且放棄官方明確支援的 Claude Plugin 路徑。
 - Claude Code 同時提供 npx 與 Claude Plugin 兩條指令並存、讓使用者自己選：中間版本考慮過，但最終定案是每個 agent 只對應一種機制，兩者互斥，理由是簡化前端「這個 agent 要顯示哪條指令」的判斷邏輯，且避免「同一顆按鈕底下混雜不同機制的指令」造成使用者混淆。
 - 自動偵測 repo 結構決定安裝機制：技術上需要解析 SKILL.md 內文找相對路徑引用，容易誤判，且需求方明確表示 MVP 階段要壓低開發成本，改為人工判斷。
+
+## Update（2026-08-11）：`claude_plugin_name` 與 `claude_marketplace_name` 解除雙向綁定
+
+原定案「兩者要嘛同時成立、要嘛同時不成立」對應的是 Claude Plugin 安裝只有一種指令形狀的假設。實測發現 Claude Plugin 安裝其實有兩種形狀，且都合法：
+
+- **整包安裝（Full package）**：`claude plugin install <claude_plugin_name>`，只裝一個獨立 plugin，不需要先註冊 marketplace（例如 `claude plugin install mattpocock-skills`）。
+- **單一元件安裝（Single kit）**：`claude plugin marketplace add <repoOwner>/<repoName>` + `claude plugin install <claude_plugin_name>@<claude_marketplace_name>`，從一個 marketplace 底下裝其中一個元件（例如 `claude plugin install frontend-design@claude-plugins-official`）。
+
+新規則：`claude_plugin_name` 仍與 `claude_install_method` 雙向綁定（必填），`claude_marketplace_name` 改為**選填**——有值就在 `claude plugin install` 指令加上 `@<marketplace>` 後綴、且前面多一行 `claude plugin marketplace add`；沒有值就只有 `claude plugin install <plugin>` 一行。判斷方式維持人工核對（不做官方／非官方 marketplace 的自動區分，見下方 Considered Options 新增項）。
+
+Schema 層級：`agent_skill_install_method_check` 拿掉 `(claude_plugin_name IS NULL) = (claude_marketplace_name IS NULL)`，改成單向限制 `(claude_marketplace_name IS NULL OR claude_plugin_name IS NOT NULL)`（有 marketplace 就一定要有 plugin，反之不必）。
+
+新增 considered option：
+
+- 加欄位區分「官方 marketplace（Claude Code 內建、不需要 `marketplace add`）」與「第三方 marketplace（需要 `marketplace add`）」：現階段查證到的所有 Claude Plugin 資料（`dotnet`、`anthropics` 系列、`mattpocock`）都是第三方 marketplace，尚無官方 marketplace 的實際案例，暫不加欄位；一律「有 `claude_marketplace_name` 就輸出 `marketplace add` + `install`」。等真的出現官方 marketplace 案例再回頭處理。

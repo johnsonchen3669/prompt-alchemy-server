@@ -7,8 +7,12 @@
 ### Agent Skill 安裝相關
 
 **Claude Plugin 安裝**：
-`claude_install_method=true` 時唯一的安裝路徑：透過 `claude plugin marketplace add <repoOwner>/<repoName>` + `claude plugin install <claude_plugin_name>@<claude_marketplace_name>` 產生指令。只對 Claude Code 有效，Codex 沒有對應機制。`claude_install_method` 與 `claude_plugin_name` 是雙向綁定的必要條件：兩者要嘛同時成立（`claude_install_method=true` 且 `claude_plugin_name`／`claude_marketplace_name` 都有填），要嘛同時不成立——不存在「有 plugin 資訊但 `claude_install_method=false`」或「`claude_install_method=true` 但沒有 plugin 資訊」的狀態。
-_Avoid_: npx（Claude Code 目標一律不產生 npx 指令）、plugin marketplace 安裝
+`claude_install_method=true` 時唯一的安裝路徑，只對 Claude Code 有效，Codex 沒有對應機制。`claude_install_method` 與 `claude_plugin_name` 雙向綁定（必填）；`claude_marketplace_name` 為**選填**，依有無分成兩種形狀：
+
+- **整包安裝（Full package）**：`claude_marketplace_name` 為 `null` 時，只產生 `claude plugin install <claude_plugin_name>` 一行，不需要先註冊 marketplace（例如 `claude plugin install mattpocock-skills`）。
+- **單一元件安裝（Single kit）**：`claude_marketplace_name` 有值時，產生 `claude plugin marketplace add <repoOwner>/<repoName>` + `claude plugin install <claude_plugin_name>@<claude_marketplace_name>` 兩行（例如 `claude plugin install frontend-design@claude-plugins-official`）。不區分官方／第三方 marketplace，一律輸出兩行（見 ADR-0001 Update）。
+
+_Avoid_: npx（Claude Code 目標一律不產生 npx 指令）
 
 **npx 安裝**：
 `codex_install_method=true` 時唯一的安裝路徑：透過 `npx skills add <repoOwner>/<repoName> --skill <skillSlug> -a codex` 產生指令（同 repo 多筆合併成一行、多個 `--skill`）。只對 Codex 有效——Claude Code 目標一律不使用 npx，一律走 Claude Plugin 安裝。`skillSlug` 可以是萬用字元 `'*'`，代表安裝來源 repo 的全部 skill（例如整個 repo 只用一個 plugin/一次 npx 呼叫涵蓋的情況）。

@@ -2,10 +2,10 @@
 // 依 CONTEXT.md「Claude Plugin 安裝／npx 安裝／Git Clone 保底」與
 // docs/adr/0001-agent-skill-install-mechanism.md 定案的規則分流：
 //   1. gitCloneMethod=true：不分 agent，只產生一條 git clone（同 repo 只產生一次）。
-//   2. 否則，agent=claude-code 且 claudeInstallMethod=true：只產生 Claude Plugin
-//      安裝（claude plugin marketplace add + claude plugin install，使用
-//      claudePluginName／claudeMarketplaceName），絕不產生 npx；同一個 plugin
-//      多筆只產生一次。
+//   2. 否則，agent=claude-code 且 claudeInstallMethod=true：產生 Claude Plugin
+//      安裝，絕不產生 npx；claudeMarketplaceName 有值才多產生一行 claude plugin
+//      marketplace add（單一元件安裝 Single kit），沒有值就只有 claude plugin
+//      install 一行（整包安裝 Full package）；同一個 plugin 多筆只產生一次。
 //   3. 否則，agent=codex 且 codexInstallMethod=true：只產生 npx 安裝
 //      （同 repo 多筆合併成一行、多個 --skill），絕不產生 claude plugins。
 // 兩個 agent 完全獨立、各自最多一種安裝路徑，不會同時出現兩種指令。
@@ -40,10 +40,15 @@ function buildInstallCommands(skills, agent) {
     }
 
     if (agent === 'claude-code' && skill.claudeInstallMethod) {
-      const pluginKey = `${skill.claudePluginName}@${skill.claudeMarketplaceName}`;
+      const hasMarketplace = Boolean(skill.claudeMarketplaceName);
+      const pluginKey = hasMarketplace
+        ? `${skill.claudePluginName}@${skill.claudeMarketplaceName}`
+        : skill.claudePluginName;
       if (!seenPlugins.has(pluginKey)) {
         seenPlugins.add(pluginKey);
-        pluginCommands.push(`claude plugin marketplace add ${repoKey}`);
+        if (hasMarketplace) {
+          pluginCommands.push(`claude plugin marketplace add ${repoKey}`);
+        }
         pluginCommands.push(`claude plugin install ${pluginKey}`);
       }
       continue;
