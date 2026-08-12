@@ -35,6 +35,7 @@ const SEED_PARAMETERS = [
   { id: '20000000-0000-4000-a000-000000000008', type: 'category', name: '測試 / 品質保證', memo: '單元測試、E2E、Code Review', is_active: true, sort_order: 8 },
   { id: '20000000-0000-4000-a000-000000000009', type: 'category', name: '文件 / 寫作', memo: '技術文件、README、註解生成', is_active: true, sort_order: 9 },
   { id: '20000000-0000-4000-a000-000000000011', type: 'category', name: '設計 / UX', memo: 'UI 設計、Wireframe、使用者研究', is_active: true, sort_order: 11 },
+  { id: '20000000-0000-4000-a000-000000000012', type: 'category', name: '教育 / 學習', memo: '教學、學習輔助、知識問答類技能', is_active: true, sort_order: 12 },
 
   // Models
   { id: '30000000-0000-4000-a000-000000000001', type: 'model', name: 'gpt-4', memo: 'OpenAI GPT-4', is_active: true, sort_order: 1 },

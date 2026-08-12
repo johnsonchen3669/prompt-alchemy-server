@@ -28,11 +28,8 @@ function makeRow(overrides = {}) {
     copy_count: 0,
     favorite_count: 0,
     is_active: true,
-    claude_install_method: true,
-    codex_install_method: true,
-    claude_plugin_name: 'mattpocock-skills',
-    claude_marketplace_name: 'mattpocock',
-    git_clone_method: false,
+    install_kind: 'single_kit',
+    supported_agents: ['codex', 'claude-code', 'cursor'],
     doc_url: null,
     created_at: null,
     updated_at: null,
@@ -41,16 +38,15 @@ function makeRow(overrides = {}) {
 }
 
 describe('AgentSkillService.getInstallCommands', () => {
-  it('claude-code 目標組出 Claude Plugin 安裝指令（不含 npx）', async () => {
+  it('claude-code 目標組出 npx 安裝指令', async () => {
     vi.spyOn(agentSkillRepository, 'findActiveById').mockResolvedValue(makeRow());
     const result = await agentSkillService.getInstallCommands('s1', 'claude-code');
     expect(result).toEqual([
-      'claude plugin marketplace add mattpocock/skills',
-      'claude plugin install mattpocock-skills@mattpocock',
+      'npx skills add mattpocock/skills --skill tdd -a claude-code',
     ]);
   });
 
-  it('codex 目標組出 npx 安裝指令（不含 claude plugins）', async () => {
+  it('codex 目標組出 npx 安裝指令', async () => {
     vi.spyOn(agentSkillRepository, 'findActiveById').mockResolvedValue(makeRow());
     const result = await agentSkillService.getInstallCommands('s1', 'codex');
     expect(result).toEqual([
@@ -58,14 +54,31 @@ describe('AgentSkillService.getInstallCommands', () => {
     ]);
   });
 
-  it('gitCloneMethod 的 Skill 回傳 git clone 指令', async () => {
+  it('cursor 目標組出 npx 安裝指令', async () => {
+    vi.spyOn(agentSkillRepository, 'findActiveById').mockResolvedValue(makeRow());
+    const result = await agentSkillService.getInstallCommands('s1', 'cursor');
+    expect(result).toEqual([
+      'npx skills add mattpocock/skills --skill tdd -a cursor',
+    ]);
+  });
+
+  it('installKind=full_package 的 Skill 組出全套安裝指令', async () => {
+    vi.spyOn(agentSkillRepository, 'findActiveById').mockResolvedValue(
+      makeRow({ install_kind: 'full_package', skill_slug: '*' }),
+    );
+    const result = await agentSkillService.getInstallCommands('s1', 'codex');
+    expect(result).toEqual([
+      "npx skills add mattpocock/skills --skill '*' -a codex",
+    ]);
+  });
+
+  it('installKind=git_clone 的 Skill 回傳 curl+tar 保底指令', async () => {
     vi.spyOn(agentSkillRepository, 'findActiveById').mockResolvedValue(
       makeRow({
         repo_owner: 'Wcc723',
         repo_name: 'social-image-kit',
-        claude_install_method: false,
-        codex_install_method: false,
-        git_clone_method: true,
+        install_kind: 'git_clone',
+        supported_agents: [],
       }),
     );
     const result = await agentSkillService.getInstallCommands('s1', 'codex');
@@ -84,7 +97,7 @@ describe('AgentSkillService.getInstallCommands', () => {
 
   it('不支援的 agent 拋出錯誤', async () => {
     vi.spyOn(agentSkillRepository, 'findActiveById').mockResolvedValue(makeRow());
-    await expect(agentSkillService.getInstallCommands('s1', 'cursor')).rejects.toThrow(
+    await expect(agentSkillService.getInstallCommands('s1', 'cursor-legacy')).rejects.toThrow(
       '不支援的目標 Agent',
     );
   });

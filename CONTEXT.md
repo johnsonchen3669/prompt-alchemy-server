@@ -6,22 +6,25 @@
 
 ### Agent Skill 安裝相關
 
-**Claude Plugin 安裝**：
-`claude_install_method=true` 時唯一的安裝路徑，只對 Claude Code 有效，Codex 沒有對應機制。`claude_install_method` 與 `claude_plugin_name` 雙向綁定（必填）；`claude_marketplace_name` 為**選填**，依有無分成兩種形狀：
+> **2026-08-12 重大轉向**：Claude Plugin 安裝機制已整個淘汰，不再使用。原因：實測發現當初判斷某些 repo「npx 裝了會壞」是誤判（見 ADR-0001 Update 2026-08-12），npx 本身足以涵蓋 Claude Code／Codex／Cursor 三個 agent，不需要 Claude Plugin 這條額外路徑。以下條目是目前唯一有效的規則；`claude_install_method`／`codex_install_method`／`claude_plugin_name`／`claude_marketplace_name` 這幾個欄位與對應的「Full package／Single kit（Claude Plugin 版）」規則已作廢，請勿沿用。
 
-- **整包安裝（Full package）**：`claude_marketplace_name` 為 `null` 時，只產生 `claude plugin install <claude_plugin_name>` 一行，不需要先註冊 marketplace（例如 `claude plugin install mattpocock-skills`）。
-- **單一元件安裝（Single kit）**：`claude_marketplace_name` 有值時，產生 `claude plugin marketplace add <repoOwner>/<repoName>` + `claude plugin install <claude_plugin_name>@<claude_marketplace_name>` 兩行（例如 `claude plugin install frontend-design@claude-plugins-official`）。不區分官方／第三方 marketplace，一律輸出兩行（見 ADR-0001 Update）。
+**安裝顆粒度（`install_kind`）**：
+每一筆 `agent_skill` 用 `install_kind` 這個欄位決定要組出哪種安裝指令，三選一，彼此互斥：
 
-_Avoid_: npx（Claude Code 目標一律不產生 npx 指令）
+- **全套安裝（`full_package`）**：`npx skills add <repoOwner>/<repoName> --skill '*' -a <agent>`。`--skill '*'` 是官方文件（`vercel-labs/skills` README）記載的「非互動、一次裝這個 repo 全部 skill」寫法，**不是**單純省略 `--skill`（那樣預設會跳出互動選單，不適合複製貼上一次執行）。
+- **單一元件安裝（`single_kit`）**：`npx skills add <repoOwner>/<repoName> --skill <skillSlug> -a <agent>`，`skillSlug` 是真正含 `SKILL.md` 的葉層資料夾名稱。
+- **Git Clone 保底（`git_clone`）**：當一筆 skill 依賴來源 repo 根目錄的其他共用檔案（`npx --skill <slug>` 只複製該 skill 自己的資料夾，裝出來會缺檔案而壞掉），且該 repo 沒有提供「全套安裝」可以連帶把根目錄檔案一起裝進來時，改用這個不分 agent 的保底路徑。指令用 `curl` 下載該 repo 的 tarball（`https://github.com/<repoOwner>/<repoName>/archive/HEAD.tar.gz`，`HEAD` 解析成預設分支）解壓縮進使用者當前目錄（`tar -xz --strip-components=1 -k`：去掉 GitHub 自動加的外殼資料夾、`-k` 讓已存在的檔案不被覆寫），同時給 bash（`curl`）與 PowerShell（`curl.exe`，繞過 PowerShell 預設把 `curl` 別名成 `Invoke-WebRequest` 的行為）兩版。**不使用 `git clone`**：會多一層巢狀資料夾、沒辦法跟使用者現有的 `.claude/`／`.agents/` 合併，且 `git clone`+`cp`+`rm -rf` 三段式在 Windows 上常因為 `.git` 內檔案剛 clone 完還被短暫鎖住而 `rm -rf` 失敗。
+  _Avoid_: git clone、手動安裝、備用安裝方式
 
-**npx 安裝**：
-`codex_install_method=true` 時唯一的安裝路徑：透過 `npx skills add <repoOwner>/<repoName> --skill <skillSlug> -a codex` 產生指令（同 repo 多筆合併成一行、多個 `--skill`）。只對 Codex 有效——Claude Code 目標一律不使用 npx，一律走 Claude Plugin 安裝。`skillSlug` 可以是萬用字元 `'*'`，代表安裝來源 repo 的全部 skill（例如整個 repo 只用一個 plugin/一次 npx 呼叫涵蓋的情況）。
-_Avoid_: skills.sh 安裝、CLI 安裝
+**支援的目標 agent（`supported_agents`）**：
+`install_kind` 為 `full_package` 或 `single_kit` 時，`supported_agents`（文字陣列）存這筆 skill 支援哪些 npx agent，目前開放 `codex`／`claude-code`／`cursor` 三個選項（`skills` CLI 官方支援 76 種 agent，用陣列而非逐一開欄位是為了未來開放更多 agent 選項時不用改 schema）。`install_kind=git_clone` 時這個欄位不使用，保底指令不分 agent。
 
-**Git Clone 保底**：
-當一筆 Agent Skill 對 Claude Code 與 Codex 都不適用時（常見原因：skill 資料夾依賴來源 repo 根目錄的其他檔案，`npx skills add --skill` 只複製 skill 自己的資料夾，裝完會缺檔案而壞掉；或該 repo 根本沒有對應的 Claude Plugin），改為產生一組不區分目標 agent 的保底安裝指令，此時 `claude_install_method`／`codex_install_method`／`claude_plugin_name`／`claude_marketplace_name` 全部為 `false`／`null`。指令用 `curl` 下載該 repo 的 tarball（`https://github.com/<repoOwner>/<repoName>/archive/HEAD.tar.gz`，`HEAD` 一律解析成預設分支）解壓縮進使用者當前目錄（`tar -xz --strip-components=1 -k`：`--strip-components=1` 去掉 GitHub 自動加的 `<repoName>-<sha>/` 外殼、`-k`/`--keep-old-files` 讓已存在的檔案不被覆寫），同時給 bash（`curl`）與 PowerShell（`curl.exe`，繞過 PowerShell 預設把 `curl` 別名成 `Invoke-WebRequest` 的行為）兩版。**不使用 `git clone`**：`git clone` 會把整個 repo 複製成一個新的巢狀資料夾，沒辦法跟使用者現有的 `.claude/`／`.agents/` 結構合併；改成 `git clone` + `cp` 複製 + `rm -rf` 清理暫存資料夾的三段式做法，在 Windows 上 `rm -rf` 常因為 clone 剛完成、`.git` 內的檔案還被防毒軟體或 Git 背景程序短暫鎖住（race condition）而失敗（`Device or resource busy`），改用 curl+tar 完全不會建立 `.git`，也就不需要清理步驟。
-_Avoid_: git clone、手動安裝、備用安裝方式
+**列表分組（全套／單一元件的顯示邏輯）**：
+前台列表依 `repo_owner + repo_name` 把同一個來源 repo 的多筆 `agent_skill` 分成一組，`install_kind=full_package` 的那一筆優先顯示；同一組底下若還有 `install_kind=single_kit` 的資料，預設收合、使用者可展開查看（沒有 `full_package` 的 repo，一樣依 `repo_owner + repo_name` 分組正常排列，只是沒有全套可以收合）。
+
+**批次安裝去重**：
+Recipe 批次安裝（或任何一次組合多筆 skill 的安裝指令情境）時，若同一個 `repo_owner/repo_name` 底下同時選到 `install_kind=full_package` 的那一筆**跟**任何 `install_kind=single_kit` 的那幾筆，只輸出 `full_package` 那一組指令，`single_kit` 的直接跳過（全套已經涵蓋它們，重複安裝沒有意義）。
 
 **安裝機制驗證**：
-Admin 新增/編輯 `agent_skill` 時，人工核對來源 repo 的 `.claude-plugin/marketplace.json`（是否有對應這支 skill／這個 repo 的 plugin）決定 `claude_install_method`／`claude_plugin_name`／`claude_marketplace_name`；人工核對 npx 對 Codex 是否可用決定 `codex_install_method`；兩者皆不適用才用 `git_clone_method` 保底。刻意不做自動化技術偵測——來源 repo 結構差異太大，MVP 階段以人工判斷壓低成本。
-_Avoid_: 自動偵測、安裝檢查
+Admin 新增/編輯 `agent_skill` 時，人工核對來源 repo 結構（有沒有共用的根目錄檔案、`npx skills add --list` 列得出哪些 skill）決定 `install_kind`／`supported_agents`；npx 也裝不起來才用 `git_clone` 保底。刻意不做自動化技術偵測——來源 repo 結構差異太大，MVP 階段以人工判斷壓低成本。
+_Avoid_: 自動偵測、安裝檢查、核對 `.claude-plugin/marketplace.json`（Claude Plugin 已淘汰）

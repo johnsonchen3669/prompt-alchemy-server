@@ -40,6 +40,14 @@ router.patch(
   skillRecipeController.renameRecipe
 );
 
+router.patch(
+  '/:id/last-selected-agent',
+  /* #swagger.tags = ['Recipes']
+     #swagger.summary = '記住這個 Recipe 上次選過的目標 agent（10 號票），下次打開時當預設選項'
+     #swagger.security = [{ "bearerAuth": [] }] */
+  skillRecipeController.updateLastSelectedAgent
+);
+
 router.delete(
   '/:id',
   /* #swagger.tags = ['Recipes']

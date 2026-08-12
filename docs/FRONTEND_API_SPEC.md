@@ -302,11 +302,8 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
         "category_name": "小工具",
         "stargazers_count": 210731,
         "favorite_count": 6,
-        "claude_install_method": true,
-        "codex_install_method": true,
-        "claude_plugin_name": "mattpocock-skills",
-        "claude_marketplace_name": "mattpocock",
-        "git_clone_method": false,
+        "install_kind": "full_package",
+        "supported_agents": ["codex", "claude-code"],
         "doc_url": "https://raw.githubusercontent.com/mattpocock/skills/main/README.md",
         "favorite_id": 42,
         "favorited_at": "2026-08-11T09:00:00Z",
@@ -580,32 +577,30 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 
 ### 安裝機制核心概念（串接 9.3 之前必看）
 
-每筆 Agent Skill 會用以下欄位描述「這支 Skill 在 Claude Code / Codex 上各自能不能裝、要用哪種方式裝」，全部由 Admin 人工判斷填寫：
+> **2026-08-12 重大轉向**：Claude Plugin 安裝機制已淘汰，`claudeInstallMethod`／`codexInstallMethod`／`claudePluginName`／`claudeMarketplaceName`／`gitCloneMethod` 這幾個欄位不再存在。**Claude Code、Codex、Cursor 三個 agent 統一透過 `npx skills add` 安裝**。
 
-> **這兩個 agent 的安裝機制完全獨立、各自最多一種、不並存**：Claude Code 一律走 Claude Plugin（絕不是 npx），Codex 一律走 npx（絕不是 claude plugins）。同一個欄位（例如 `claudeInstallMethod`）只會決定「這個 agent 有沒有提供安裝」，機制本身是固定的，不是可選的。
-
-**Claude Plugin 安裝有兩種形狀**（差別在 `claudeMarketplaceName` 有沒有值，前端據此在 SkillCard 顯示 **Full package／Single kit** 徽章）：
-
-* **整包安裝 Full package**（`claudeMarketplaceName === null`）：`claude plugin install <claudePluginName>` 一行。例：`claude plugin install mattpocock-skills`
-* **單一元件安裝 Single kit**（`claudeMarketplaceName` 有值）：`claude plugin marketplace add <repoOwner>/<repoName>` + `claude plugin install <claudePluginName>@<claudeMarketplaceName>` 兩行。例：`claude plugin install frontend-design@claude-plugins-official`
+每筆 Agent Skill 用 `installKind`（三選一）與 `supportedAgents`（陣列）描述「這支 Skill 要用哪種方式裝、支援哪些 agent」，全部由 Admin 人工判斷填寫：
 
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `claudeInstallMethod` | boolean | `true` 代表 Claude Code 提供安裝，**一律走 Claude Plugin**（`claude plugin install`，視 `claudeMarketplaceName` 有無決定要不要加一行 `claude plugin marketplace add`），**絕不產生 npx 指令**。`true` 時 `claudePluginName` 一定有填（雙向綁定） |
-| `codexInstallMethod` | boolean | `true` 代表 Codex 提供安裝，**一律走 npx**（`npx skills add ... -a codex`），Codex 沒有 plugin 機制 |
-| `claudePluginName` | string \| null | Claude Plugin 名稱。只有 `claudeInstallMethod=true` 時才會有值，`claudeInstallMethod=false` 時一定是 `null` |
-| `claudeMarketplaceName` | string \| null | **選填**，與 `claudePluginName` 不再雙向綁定：`null` 代表整包安裝（Full package，見上），有值代表單一元件安裝（Single kit，見上）。只有 `claudePluginName` 有值時 `claudeMarketplaceName` 才可能有值 |
-| `gitCloneMethod` | boolean | `true` 代表兩個 agent 都不提供安裝（可能是 npx 會裝壞、也可能是該 repo 沒有對應的 Claude Plugin），改用下方的 curl 保底指令，不分 agent。這種情況下 `claudeInstallMethod`／`codexInstallMethod`／`claudePluginName`／`claudeMarketplaceName` 全部是 `false`／`null` |
+| `installKind` | `'full_package'` \| `'single_kit'` \| `'git_clone'` | 決定要組出哪種安裝指令，見下方三種形狀 |
+| `supportedAgents` | string[] | `installKind` 為 `full_package`／`single_kit` 時，這筆支援哪些 npx agent，元素為 `'codex'`／`'claude-code'`／`'cursor'` 三選多；`installKind='git_clone'` 時為空陣列（保底不分 agent） |
+
+**三種安裝形狀**：
+
+* **全套安裝 Full package**（`installKind='full_package'`）：`npx skills add <repoOwner>/<repoName> --skill '*' -a <agent>` 一行。`--skill '*'` 是 `skills` CLI 官方支援的「非互動、一次裝這個 repo 全部 skill」寫法，**不是**單純省略 `--skill`（那樣預設會跳出互動選單）。
+* **單一元件安裝 Single kit**（`installKind='single_kit'`）：`npx skills add <repoOwner>/<repoName> --skill <skillSlug> -a <agent>` 一行，`skillSlug` 是真正含 `SKILL.md` 的葉層資料夾名稱。
+* **Git Clone 保底**（`installKind='git_clone'`）：跟形狀 1／2 是不同的指令族，不分 agent，見下方說明。
 
 **Git Clone 保底不是真的 `git clone`**：為了讓保底安裝的檔案能直接合併進使用者現有的 `.claude/`／`.agents/` 目錄（而不是多一層 `<repoName>/` 巢狀資料夾），實際指令是用 `curl` 下載 GitHub tarball 解壓縮進當前目錄，`--strip-components=1` 去掉外層資料夾、`-k` 讓已存在的檔案不被覆寫。同時提供 bash（`curl`）與 PowerShell（`curl.exe`）兩版，用 `#` 開頭的註解行分隔，前端**兩行都要顯示**，讓使用者自己認得該複製哪一段（不要只顯示第一行）。詳見 9.3。
 
-**`skillSlug` 補充**：只有 Codex（走 npx）才會用到這個欄位。大部分是單一 skill 的資料夾名稱（例如 `frontend-design`），少數代表「整個來源 repo 一次全裝」時會是萬用字元 `'*'`——前端不需要特別處理，畫面上顯示 `name`／`description` 即可，不用把 `skillSlug` 顯示給使用者看。
+**`skillSlug` 補充**：`installKind='single_kit'` 時是真正的技能資料夾名稱（例如 `frontend-design`）；`installKind='full_package'` 或 `'git_clone'` 時不使用，前端不需要顯示這個欄位給使用者看。
 
 **前端串接安裝功能的判斷邏輯**：
 
-1. 若 `gitCloneMethod === true` → **不需要讓使用者選擇目標 agent**，直接顯示一顆「複製保底安裝指令」按鈕即可（呼叫 9.3 的 API 時 `agent` 帶哪個值結果都一樣）。
-2. 否則，依 `claudeInstallMethod` / `codexInstallMethod` 決定要顯示哪些 agent 按鈕（兩個都 `true` 就顯示「Claude Code」「Codex」兩個按鈕；只有一個是 `true` 就只顯示那一個，避免使用者選了卻拿到空陣列）。
-3. 使用者選定 agent 後，呼叫 9.3 API 拿到 `commands` 陣列並顯示——**選 Claude Code 拿到 Claude Plugin 指令（Full package 1 行／Single kit 2 行），選 Codex 一定拿到 npx 的一行指令，兩者不會混在一起，也不會同時出現**。
+1. 若 `installKind === 'git_clone'` → **不需要讓使用者選擇目標 agent**，直接顯示一顆「複製保底安裝指令」按鈕即可（呼叫 9.3 的 API 時 `agent` 帶哪個值結果都一樣）。
+2. 否則，agent 選擇器顯示 `supportedAgents` 陣列裡有的那些選項（圖示 + agent 名稱：Codex／Claude Code／Cursor），預設選 Codex；不要讓使用者選到 `supportedAgents` 沒有的 agent，避免拿到空陣列。
+3. 使用者選定 agent 後，呼叫 9.3 API 拿到 `commands` 陣列並顯示——`installKind='full_package'`／`'single_kit'` 都固定回傳 1 行 npx 指令，`installKind='git_clone'` 固定回傳 1 個元素但內含 bash／PowerShell 兩版（見下方）。
 
 ### 9.1 取得上架中的 Agent Skill 列表
 * **Endpoint**: `GET /agent-skills`
@@ -637,11 +632,8 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
         "favoriteCount": 5,
         "isHot": true,
         "isActive": true,
-        "claudeInstallMethod": true,
-        "codexInstallMethod": true,
-        "claudePluginName": "mattpocock-skills",
-        "claudeMarketplaceName": null,
-        "gitCloneMethod": false,
+        "installKind": "full_package",
+        "supportedAgents": ["codex", "claude-code"],
         "docUrl": "https://raw.githubusercontent.com/mattpocock/skills/main/README.md",
         "createdAt": "2026-08-01T08:00:00Z",
         "updatedAt": "2026-08-01T08:00:00Z"
@@ -649,8 +641,7 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
     ]
   }
   ```
-  > 上面這筆 `skillSlug: "*"` 代表「整個 mattpocock/skills repo 一次全裝」，不是單一 skill——`matt`／`.NET Agent Skills`／`anthropic/skills` 這幾筆都是這種「整包」條目；`frontend-design`／`lazy-senior` 這種才是單一 skill 條目，`skillSlug` 會是真正的資料夾名稱。
-  > 這筆 `claudeMarketplaceName: null` 對應 **Full package** 形狀（`claude plugin install mattpocock-skills`，1 行）；`frontend-design@claude-plugins-official` 這種 `claudeMarketplaceName` 有值的才是 **Single kit** 形狀（2 行，見 9.3）。
+  > 上面這筆 `skillSlug: "*"` 對應 `installKind: "full_package"`，代表「整個 mattpocock/skills repo 一次全裝」，不是單一 skill；`frontend-design` 這種 `installKind: "single_kit"` 的才是單一元件條目，`skillSlug` 會是真正的資料夾名稱。這筆 `supportedAgents` 沒有 `cursor`，前端 agent 選擇器只顯示 Codex／Claude Code 兩個選項。
 
 ### 9.2 取得單一 Agent Skill 詳細內容
 * **Endpoint**: `GET /agent-skills/:id`
@@ -663,31 +654,8 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 * **Endpoint**: `GET /agent-skills/:id/install-command`
 * **Auth**: 無需 Token
 * **Query Parameters (必填)**:
-  * `agent`: `claude-code` | `codex`（其他值會回 400）
-* **Response (200 OK)，`agent=claude-code`，Full package（`claudeMarketplaceName=null`，1 行）**：
-  ```json
-  {
-    "status": "success",
-    "data": {
-      "commands": [
-        "claude plugin install mattpocock-skills"
-      ]
-    }
-  }
-  ```
-* **Response (200 OK)，`agent=claude-code`，Single kit（`claudeMarketplaceName` 有值，2 行）**：
-  ```json
-  {
-    "status": "success",
-    "data": {
-      "commands": [
-        "claude plugin marketplace add anthropics/skills",
-        "claude plugin install document-skills@anthropic-agent-skills"
-      ]
-    }
-  }
-  ```
-* **Response (200 OK)，`agent=codex`（一律 npx，1 行）**：
+  * `agent`: `claude-code` | `codex` | `cursor`（其他值會回 400）
+* **Response (200 OK)，`installKind='full_package'`（1 行）**：
   ```json
   {
     "status": "success",
@@ -698,10 +666,20 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
     }
   }
   ```
+* **Response (200 OK)，`installKind='single_kit'`（1 行）**：
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "commands": [
+        "npx skills add anthropics/claude-plugins-official --skill frontend-design -a claude-code"
+      ]
+    }
+  }
+  ```
   * `commands` 是**字串陣列**，每個元素代表畫面上「一個可複製的區塊」，但一個元素**可能包含多行**（用 `\n` 分隔，前端請保留換行原樣顯示，例如放進 `<pre>` 或 `white-space: pre-wrap` 的容器，不要把 `\n` 當空白吃掉）。陣列長度依情況而定：
-    * `agent=claude-code`：依 `claudeMarketplaceName` 有無決定 1 行（Full package，只有 `claude plugin install`）或 2 行（Single kit，多一行 `claude plugin marketplace add`），如上兩例。
-    * `agent=codex`：固定 1 行 npx 指令。
-    * `gitCloneMethod=true`：固定回傳**一個元素**，但這個元素內含 4 行（`\n` 分隔）：bash 指令前先一行 `# Git Bash / WSL / macOS / Linux：` 註解，接著 PowerShell 指令前一行 `# Windows PowerShell：` 註解，不分 `agent` 帶哪個值都一樣：
+    * `installKind='full_package'`／`'single_kit'`：固定 1 行 npx 指令，如上兩例。
+    * `installKind='git_clone'`：固定回傳**一個元素**，但這個元素內含 4 行（`\n` 分隔）：bash 指令前先一行 `# Git Bash / WSL / macOS / Linux：` 註解，接著 PowerShell 指令前一行 `# Windows PowerShell：` 註解，不分 `agent` 帶哪個值都一樣：
       ```json
       {
         "status": "success",
@@ -713,9 +691,9 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
       }
       ```
       **不要**只複製第一行給使用者——`-k` 是保護既有檔案不被覆寫的關鍵旗標，缺了會有資料遺失風險；也**不要**自動幫使用者判斷該用哪一版，兩版都顯示、讓使用者自己認得自己的終端機環境。
-    * 若該 skill 對這個 agent 完全不提供安裝（例如 `claudeInstallMethod=false` 卻選了 `agent=claude-code`），會回傳**空陣列** `[]`——正常情況下前端不該讓使用者選到這個 agent（見上方判斷邏輯第 2 點），但仍要處理空陣列（顯示「此 Skill 不支援此 agent」之類的訊息，不要顯示空白區塊）。
+    * 若該 skill 的 `supportedAgents` 不包含目前選的 `agent`（例如選了 `cursor` 但 `supportedAgents` 只有 `["codex"]`），會回傳**空陣列** `[]`——正常情況下前端不該讓使用者選到這個 agent（見上方判斷邏輯第 2 點），但仍要處理空陣列（顯示「此 Skill 不支援此 agent」之類的訊息，不要顯示空白區塊）。
   * 請把整個陣列都顯示出來（例如用多行 code block），不要只取 `commands[0]`。
-* **Response (400 Bad Request)**：`agent` 不是 `claude-code` 或 `codex`。
+* **Response (400 Bad Request)**：`agent` 不是 `claude-code`／`codex`／`cursor`。
   ```json
   { "status": "error", "message": "不支援的目標 Agent：xxx" }
   ```
@@ -829,11 +807,8 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
           "category_name": "小工具",
           "stargazers_count": 210731,
           "favorite_count": 6,
-          "claude_install_method": true,
-          "codex_install_method": true,
-          "claude_plugin_name": "mattpocock-skills",
-          "claude_marketplace_name": "mattpocock",
-          "git_clone_method": false,
+          "install_kind": "full_package",
+          "supported_agents": ["codex", "claude-code"],
           "doc_url": "https://raw.githubusercontent.com/mattpocock/skills/main/README.md",
           "favorite_id": 42,
           "added_at": "2026-08-11T10:00:00Z"
@@ -857,6 +832,22 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 * **Response (200 OK)**：回傳更新後的 Recipe（欄位同 10.1 單筆物件）。
 * **Response (400 Bad Request)**：`name` 空白，訊息同 10.2。
 * **Response (404 Not Found)**：Recipe 不存在，或不屬於目前登入者，訊息同 10.3。
+
+### 10.4a 記住這個 Recipe 上次選過的目標 agent
+* **Endpoint**: `PATCH /me/recipes/:id/last-selected-agent`
+* **Auth**: `Authorization: Bearer <token>`
+* **使用時機**：Recipe 批次安裝畫面的 agent 選擇器每次切換選項，就立刻呼叫這支存回去（不用等使用者按下複製或安裝才存），下次打開同一個 Recipe 時，選擇器預設值讀 10.1／10.3 回傳的 `last_selected_agent` 欄位。
+* **Request Body**:
+  ```json
+  { "agent": "cursor" }
+  ```
+* **Response (200 OK)**：回傳更新後的 Recipe（欄位同 10.1 單筆物件，含更新後的 `last_selected_agent`）。
+* **Response (400 Bad Request)**：`agent` 不是 `claude-code`／`codex`／`cursor`。
+  ```json
+  { "status": "error", "message": "不支援的目標 Agent：xxx" }
+  ```
+* **Response (404 Not Found)**：Recipe 不存在，或不屬於目前登入者，訊息同 10.3。
+* **`last_selected_agent` 補充**：10.1／10.3 回傳的 Recipe 物件都含這個欄位，全新建立、還沒選過 agent 的 Recipe 值是 `null`，前端請 fallback 顯示 `codex`，不要顯示空白選項。
 
 ### 10.5 刪除 Recipe
 * **Endpoint**: `DELETE /me/recipes/:id`
@@ -895,10 +886,10 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
 * **Endpoint**: `GET /me/recipes/:id/install-command`
 * **Auth**: `Authorization: Bearer <token>`
 * **Query Parameters (必填)**:
-  * `agent`: `claude-code` | `codex`（其他值會回 400）
+  * `agent`: `claude-code` | `codex` | `cursor`（其他值會回 400）
 * **說明**：Recipe 檢視頁「複製全部安裝指令」用這支，規則跟 9.3 完全一致（同一支純函式產生），差別只在於輸入是整個 Recipe 底下的 Skill 清單，不是單一 Skill：
-  * 同一個 repo／同一個 plugin 的多筆 Skill 會合併，`agent=claude-code` 只產生一次 `claude plugin install`（依各筆的 `claudeMarketplaceName` 有無決定要不要多一行 `marketplace add`，Full package／Single kit 判斷邏輯同 9 節）；`agent=codex` 合併成一行、多個 `--skill`。
-  * 不同 repo／不同 plugin 的各自分開。
+  * 同一個 repo 底下若同時選到 `installKind='full_package'` 與其下的 `'single_kit'`，只輸出 `full_package` 那一行，`single_kit` 的直接跳過（全套已經涵蓋它們）。
+  * 同一個 repo 的多筆 `single_kit` 會合併成一行、多個 `--skill`；不同 repo 各自分開一行。
   * 空 Recipe（沒有任何項目）回傳空陣列 `commands: []`，前端請顯示「這個 Recipe 還沒有任何 Skill」之類的訊息，不要顯示空白區塊。
 * **Response (200 OK)**：
   ```json
@@ -906,12 +897,11 @@ Prompt 的範例輸出已升級為可動態增減與排序的**區塊陣列 (Blo
     "status": "success",
     "data": {
       "commands": [
-        "claude plugin install mattpocock-skills",
-        "claude plugin marketplace add anthropics/skills",
-        "claude plugin install document-skills@anthropic-agent-skills"
+        "npx skills add mattpocock/skills --skill '*' -a codex",
+        "npx skills add anthropics/claude-plugins-official --skill frontend-design -a codex"
       ]
     }
   }
   ```
-* **Response (400 Bad Request)**：`agent` 不是 `claude-code` 或 `codex`，訊息同 9.3。
+* **Response (400 Bad Request)**：`agent` 不是 `claude-code`／`codex`／`cursor`，訊息同 9.3。
 * **Response (404 Not Found)**：Recipe 不存在或不屬於自己，訊息同 10.3。

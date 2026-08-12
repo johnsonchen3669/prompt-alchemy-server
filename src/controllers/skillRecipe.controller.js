@@ -54,6 +54,24 @@ async function renameRecipe(req, res, next) {
   }
 }
 
+async function updateLastSelectedAgent(req, res, next) {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+    const { agent } = req.body;
+    const data = await skillRecipeService.updateLastSelectedAgent(userId, id, agent);
+    res.status(200).json({ status: 'success', data });
+  } catch (error) {
+    if (error.code === 'NOT_FOUND') {
+      return res.status(404).json({ status: 'error', message: error.message });
+    }
+    if (error.status === 400) {
+      return res.status(400).json({ status: 'error', message: error.message });
+    }
+    next(error);
+  }
+}
+
 async function deleteRecipe(req, res, next) {
   try {
     const userId = req.user.userId;
@@ -112,6 +130,7 @@ module.exports = {
   getRecipeDetail,
   createRecipe,
   renameRecipe,
+  updateLastSelectedAgent,
   deleteRecipe,
   addItem,
   removeItem,

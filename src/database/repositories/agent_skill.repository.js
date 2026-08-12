@@ -37,9 +37,9 @@ class AgentSkillRepository {
     return result.rows;
   }
 
-  /**
-   * 根據 ID 取得單一上架中的 Agent Skill
-   */
+
+  // 根據 ID 取得單一上架中的 Agent Skill
+
   async findActiveById(id) {
     const sql = `
       SELECT
@@ -54,18 +54,14 @@ class AgentSkillRepository {
     return result.rows[0] || null;
   }
 
-  /**
-   * agent_skill 的欄位清單，favorite_count 刻意不選 s.favorite_count 這個
-   * 快取欄位，改成即時對 favorite 表 COUNT(*)，確保跟真實收藏資料一致，
-   * 不會因為某次收藏/取消收藏漏了重算而跟事實脫節。
-   */
+  // agent_skill 的欄位清單，
+  
   _selectColumns() {
     return `
       s.id, s.name, s.description, s.intro, s.repo_owner, s.repo_name, s.skill_slug,
       s.creator_name, s.creator_avatar_url, s.creator_profile_url, s.license,
       s.category_id, s.user_id, s.stargazers_count, s.copy_count, s.is_active,
-      s.claude_install_method, s.codex_install_method, s.claude_plugin_name,
-      s.claude_marketplace_name, s.git_clone_method, s.doc_url,
+      s.install_kind, s.supported_agents, s.doc_url,
       s.created_at, s.updated_at,
       (
         SELECT COUNT(*)::integer FROM favorite f
@@ -74,9 +70,8 @@ class AgentSkillRepository {
     `;
   }
 
-  /**
-   * 增加 Agent Skill 的安裝指令複製次數
-   */
+  // 增加 Agent Skill 的安裝指令複製次數
+
   async incrementCopyCount(id) {
     const sql = `
       UPDATE agent_skill
@@ -90,9 +85,8 @@ class AgentSkillRepository {
 
   // --- Admin API Methods ---
 
-  /**
-   * 後台取得所有 Agent Skill（不限上架狀態）
-   */
+  // 後台取得所有 Agent Skill（不限上架狀態）
+
   async findAllForAdmin({ keyword, categoryId, active } = {}) {
     let sql = `
       SELECT
@@ -126,9 +120,7 @@ class AgentSkillRepository {
     return result.rows;
   }
 
-  /**
-   * 後台取得單筆 Agent Skill
-   */
+  // 後台取得單筆 Agent Skill
   async findByIdForAdmin(id) {
     const sql = `
       SELECT
@@ -143,22 +135,19 @@ class AgentSkillRepository {
     return result.rows[0] || null;
   }
 
-  /**
-   * 後台新增 Agent Skill
-   */
+  // 後台新增 Agent Skill
   async create(data) {
     const sql = `
       INSERT INTO agent_skill (
         name, description, intro, repo_owner, repo_name, skill_slug,
         creator_name, creator_avatar_url, creator_profile_url, license,
         category_id, user_id, stargazers_count, is_active,
-        claude_install_method, codex_install_method, claude_plugin_name,
-        claude_marketplace_name, git_clone_method, doc_url
+        install_kind, supported_agents, doc_url
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
         $11, $12, $13, $14,
-        $15, $16, $17, $18, $19, $20
+        $15, $16, $17
       ) RETURNING *
     `;
     const params = [
@@ -176,11 +165,8 @@ class AgentSkillRepository {
       data.userId,
       data.stargazersCount || 0,
       data.isActive ?? true,
-      data.claudeInstallMethod ?? true,
-      data.codexInstallMethod ?? true,
-      data.claudePluginName || null,
-      data.claudeMarketplaceName || null,
-      data.gitCloneMethod ?? false,
+      data.installKind,
+      data.supportedAgents || [],
       data.docUrl || null,
     ];
     const result = await db.query(sql, params);
@@ -188,9 +174,7 @@ class AgentSkillRepository {
     return newRow ? this.findByIdForAdmin(newRow.id) : null;
   }
 
-  /**
-   * 後台修改 Agent Skill（部分更新）
-   */
+  // 後台修改 Agent Skill（部分更新）
   async update(id, data) {
     const fields = {
       name: 'name',
@@ -205,11 +189,8 @@ class AgentSkillRepository {
       license: 'license',
       categoryId: 'category_id',
       stargazersCount: 'stargazers_count',
-      claudeInstallMethod: 'claude_install_method',
-      codexInstallMethod: 'codex_install_method',
-      claudePluginName: 'claude_plugin_name',
-      claudeMarketplaceName: 'claude_marketplace_name',
-      gitCloneMethod: 'git_clone_method',
+      installKind: 'install_kind',
+      supportedAgents: 'supported_agents',
       docUrl: 'doc_url',
     };
 
@@ -239,9 +220,8 @@ class AgentSkillRepository {
     return result.rows[0] ? this.findByIdForAdmin(id) : null;
   }
 
-  /**
-   * 停用 / 啟用（不做硬刪除，is_active 切換皆可逆）
-   */
+   // 停用 / 啟用（不做硬刪除，is_active 切換皆可逆）
+
   async setActive(id, isActive) {
     const sql = `
       UPDATE agent_skill

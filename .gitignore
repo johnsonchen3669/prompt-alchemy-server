@@ -13,9 +13,11 @@ H-SYSTEM.md
 .h-system-selection.json
 CLAUDE.md
 AGENTS.md
-.claude/skills
-.agents/skills
+.claude
+.agents
 .scratch
+docs/
+CONTEXT.md
 # --- H-System Mount (end) ---
 coverage/
 .testagent/

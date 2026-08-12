@@ -4,10 +4,10 @@ const favoriteService = require('../services/favorite.service');
 // item_type 白名單驗證（CWE-20）：只接受這兩個值，其餘一律視為不合法請求。
 const VALID_ITEM_TYPES = ['prompt', 'skill'];
 
-/**
- * 解析並驗證 req.query.itemType，省略時預設為 'prompt'（既有 Prompt 收藏行為）。
- * 不合法時直接回 400 並回傳 null，呼叫端需檢查回傳值是否為 null 並提早 return。
- */
+
+ // 解析並驗證 req.query.itemType，省略時預設為 'prompt'（既有 Prompt 收藏行為）。
+ // 不合法時直接回 400 並回傳 null，呼叫端需檢查回傳值是否為 null 並提早 return。
+
 function resolveItemType(req, res) {
     const itemType = req.query.itemType || 'prompt';
     if (!VALID_ITEM_TYPES.includes(itemType)) {

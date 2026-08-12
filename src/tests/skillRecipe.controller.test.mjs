@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url);
 const skillRecipeService = require('../services/skillRecipe.service');
 const {
   listMyRecipes, listMyRecipeItems, getRecipeDetail, createRecipe, renameRecipe, deleteRecipe,
-  addItem, removeItem, getInstallCommands,
+  addItem, removeItem, getInstallCommands, updateLastSelectedAgent,
 } = require('../controllers/skillRecipe.controller');
 
 function createResponse() {
@@ -95,6 +95,54 @@ describe('skillRecipeController.renameRecipe', () => {
 
     expect(spy).toHaveBeenCalledWith('u1', 'r1', '新名稱');
     expect(res.json).toHaveBeenCalledWith({ status: 'success', data });
+  });
+});
+
+describe('skillRecipeController.updateLastSelectedAgent', () => {
+  it('以 params.id 與 body.agent 呼叫 service 並回傳 200', async () => {
+    const data = { id: 'r1', last_selected_agent: 'cursor' };
+    const spy = vi.spyOn(skillRecipeService, 'updateLastSelectedAgent').mockResolvedValue(data);
+    const res = createResponse();
+
+    await updateLastSelectedAgent(
+      { user: { userId: 'u1' }, params: { id: 'r1' }, body: { agent: 'cursor' } },
+      res,
+      vi.fn(),
+    );
+
+    expect(spy).toHaveBeenCalledWith('u1', 'r1', 'cursor');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ status: 'success', data });
+  });
+
+  it('不支援的 agent 回傳 400', async () => {
+    const error = Object.assign(new Error('不支援的目標 Agent：cursor-legacy'), { status: 400 });
+    vi.spyOn(skillRecipeService, 'updateLastSelectedAgent').mockRejectedValue(error);
+    const res = createResponse();
+
+    await updateLastSelectedAgent(
+      { user: { userId: 'u1' }, params: { id: 'r1' }, body: { agent: 'cursor-legacy' } },
+      res,
+      vi.fn(),
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ status: 'error', message: error.message });
+  });
+
+  it('Recipe 不存在時回傳 404', async () => {
+    const error = Object.assign(new Error('找不到指定的 Recipe'), { code: 'NOT_FOUND' });
+    vi.spyOn(skillRecipeService, 'updateLastSelectedAgent').mockRejectedValue(error);
+    const res = createResponse();
+
+    await updateLastSelectedAgent(
+      { user: { userId: 'u1' }, params: { id: 'r1' }, body: { agent: 'codex' } },
+      res,
+      vi.fn(),
+    );
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ status: 'error', message: error.message });
   });
 });
 

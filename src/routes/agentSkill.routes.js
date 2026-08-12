@@ -82,7 +82,7 @@ router.get(
   '/:id/install-command',
   /* #swagger.tags = ['Agent Skills']
      #swagger.summary = '依目標 agent 取得組好的安裝指令'
-     #swagger.description = '依 claude_install_method/codex_install_method/claude_plugin_name/claude_marketplace_name/git_clone_method 規則組出可直接貼上終端機的安裝指令陣列。' */
+     #swagger.description = '依 install_kind/supported_agents 規則組出可直接貼上終端機的安裝指令陣列（agent 支援 claude-code/codex/cursor）。' */
   /* #swagger.parameters['id'] = {
        in: 'path',
        description: 'Agent Skill ID (UUID)',

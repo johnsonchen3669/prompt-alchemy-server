@@ -51,3 +51,25 @@ curl -fsSL https://github.com/<repoOwner>/<repoName>/archive/HEAD.tar.gz | tar -
 
 - 新增 `shell=bash|powershell` query 參數，讓前端仿照 `agent` 選擇器做一個 shell 切換 UI：討論過，但 git-clone 保底是「保底中的保底」，不值得為它在 API 契約上加一個新維度；兩版指令都不長，直接都顯示、讓使用者自己認得自己的終端機環境更簡單。
 - 只取 skill 需要的子資料夾（例如用 `npx degit <repo>/<skillSlug>` 或 tar 只解壓縮子路徑）：討論過，但這剛好會重現 git-clone 保底存在的理由——這些 skill 之所以不能用 `npx skills add --skill` 裝，正是因為它們依賴 repo 根目錄的其他檔案，只取子資料夾會重新製造出一樣的破損。
+
+## Update（2026-08-12）：Claude Plugin 安裝機制整個淘汰，三個 agent 統一走 npx
+
+**這個 Update 推翻本 ADR 最初的定案**（第 5 段「Claude Code 與 Codex 兩個 agent 的安裝機制完全獨立」）與 2026-08-11 那次 Update（`claude_plugin_name`／`claude_marketplace_name` 解除雙向綁定）——兩者都建立在「Claude Code 必須走 Claude Plugin，npx 對 Claude Code 不可靠」這個前提上，這個前提本身查證後是錯的。
+
+**發現**：最初定案引用的 `Wcc723/social-image-kit` 案例（`npx skills add --skill slide-html` 裝出缺檔案的結果）事後查證是 **marketplace 誤判**造成的，不是 npx 這個機制本身有結構性缺陷。同時查證 `npx skills` 官方文件（`vercel-labs/skills` README）確認 `--skill '*'`（全套安裝）本來就是官方支援、非互動、會把整個 repo 的檔案（包含根目錄共用檔案）一次裝完的寫法——並非只有 Claude Plugin 才能處理「skill 依賴 repo 根目錄其他檔案」這種情境。
+
+**新規則**：Claude Code、Codex、Cursor 三個 agent 統一透過 `npx skills add <repoOwner>/<repoName> [--skill <skillSlug>] -a <agent>` 安裝，不再有 agent 專屬的安裝機制分支。**Claude Plugin 整條路徑（`claude plugin marketplace add`／`claude plugin install`）作廢，不再產生。** `git_clone_method` 保底維持不變（見 2026-08-12 稍早那次 Update），只是判斷「這筆要不要保底」的參照對象從「有沒有 Claude Plugin」改成「npx 全套安裝裝不裝得起來」。
+
+**Schema 變更**：
+
+- 移除：`claude_install_method`、`codex_install_method`、`claude_plugin_name`、`claude_marketplace_name`、`agent_skill_install_method_check`。
+- 新增：`install_kind`（`'full_package'` \| `'single_kit'` \| `'git_clone'`，三選一，取代原本三個布林欄位分散判斷、還要靠 CHECK constraint 防止互斥狀態出錯的做法）、`supported_agents`（`TEXT[]`，`install_kind` 為 `full_package`／`single_kit` 時存支援的 npx agent，目前開放 `codex`／`claude-code`／`cursor`；`install_kind='git_clone'` 時不使用，用陣列而非逐一開欄位是預留未來開放 `skills` CLI 支援的其他 73 種 agent 的擴充空間）。
+- `skill_slug`：`install_kind='single_kit'` 時代表真正的技能資料夾名稱；`install_kind='full_package'` 或 `'git_clone'` 時不使用（可為 `null`）。
+
+**列表顯示與批次安裝去重**（連帶決策，非 schema 本身，記錄於 `CONTEXT.md`）：前台列表依 `repo_owner + repo_name` 分組，`full_package` 優先顯示、`single_kit` 預設收合可展開；批次安裝（Recipe）若同一 repo 同時選到 `full_package` 與其下的 `single_kit`，只輸出 `full_package`，避免重複安裝。
+
+**既有種子資料**：所有現有 `agent_skill` 種子資料（`dotnet/skills` 的 16 個 plugin、`anthropics/claude-plugins-official` 的多個獨立 plugin 等）需要依新規則逐筆重新查證 `install_kind`／`supported_agents`，不是機械式欄位改名就能沿用——`dotnet/skills` 這類「一個 repo 底下有多個獨立可裝單位」的來源，過去用單一 `skillSlug: '*'` 一筆代表整個 repo 會失真（見查證記錄：`dotnet` plugin 實際只有 1 個 skill，並非「.NET 完整合集」），需要拆成 `full_package`（若 npx 全套安裝真的能裝出完整結果）＋多筆 `single_kit`（各 plugin／skill）。
+
+新增 considered option：
+
+- Claude Code 保留 Claude Plugin、跟 npx 並存，讓使用者兩者都能選：討論過，但既然當初「npx 不可靠」的前提已經證偽，維持兩條路徑只會增加使用者選擇負擔與程式碼複雜度，沒有對應的好處，故直接汰除 Claude Plugin 路徑。

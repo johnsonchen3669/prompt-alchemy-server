@@ -99,6 +99,29 @@ describe('SkillRecipeRepository.rename', () => {
   });
 });
 
+describe('SkillRecipeRepository.updateLastSelectedAgent', () => {
+  it('更新成功時回傳更新後的 Recipe', async () => {
+    const recipe = { id: 'r1', user_id: 'u1', last_selected_agent: 'cursor' };
+    const querySpy = vi.spyOn(db, 'query').mockResolvedValue({ rows: [recipe] });
+
+    const result = await skillRecipeRepository.updateLastSelectedAgent('r1', 'u1', 'cursor');
+
+    const [sql, params] = querySpy.mock.calls[0];
+    expect(sql).toContain('UPDATE skill_recipe');
+    expect(sql).toContain('last_selected_agent');
+    expect(params).toEqual(['r1', 'u1', 'cursor']);
+    expect(result).toEqual(recipe);
+  });
+
+  it('找不到符合的 Recipe 時回傳 null', async () => {
+    vi.spyOn(db, 'query').mockResolvedValue({ rows: [] });
+
+    const result = await skillRecipeRepository.updateLastSelectedAgent('r1', 'u1', 'codex');
+
+    expect(result).toBeNull();
+  });
+});
+
 describe('SkillRecipeRepository.remove', () => {
   it('刪除成功時回傳 true', async () => {
     vi.spyOn(db, 'query').mockResolvedValue({ rows: [{ id: 'r1' }] });

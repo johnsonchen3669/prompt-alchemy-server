@@ -1,10 +1,10 @@
 const agentSkillService = require('../services/agentSkill.service');
 
 class AgentSkillController {
-  /**
-   * 取得上架中的 Agent Skill 列表
-   * GET /agent-skills
-   */
+
+   // 取得上架中的 Agent Skill 列表
+   // GET /agent-skills
+
   async getAgentSkills(req, res, next) {
     try {
       const data = await agentSkillService.getAgentSkills(req.query);
@@ -17,10 +17,10 @@ class AgentSkillController {
     }
   }
 
-  /**
-   * 取得單一 Agent Skill 詳細內容
-   * GET /agent-skills/:id
-   */
+
+   // 取得單一 Agent Skill 詳細內容
+   // GET /agent-skills/:id
+
   async getAgentSkillById(req, res, next) {
     try {
       const { id } = req.params;
@@ -40,10 +40,8 @@ class AgentSkillController {
     }
   }
 
-  /**
-   * 依目標 agent 取得這筆 Agent Skill 組好的安裝指令
-   * GET /agent-skills/:id/install-command?agent=claude-code
-   */
+  // 依目標 agent 取得這筆 Agent Skill 組好的安裝指令
+  // GET /agent-skills/:id/install-command?agent=claude-code
   async getInstallCommands(req, res, next) {
     try {
       const { id } = req.params;
@@ -70,10 +68,8 @@ class AgentSkillController {
     }
   }
 
-  /**
-   * 增加 Agent Skill 的安裝指令複製次數
-   * POST /agent-skills/:id/copy
-   */
+  // 增加 Agent Skill 的安裝指令複製次數
+  // POST /agent-skills/:id/copy
   async incrementCopyCount(req, res, next) {
     try {
       const { id } = req.params;
