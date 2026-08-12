@@ -8,6 +8,7 @@ router.use('/utility', require('./utility.routes'))
 router.use('/prompts', require('./prompt.routes'));
 router.use('/favorites', require('./favorite.routes'));
 router.use('/me/recipes', require('./skillRecipe.routes'));
+router.use('/me/recipe-items', require('./skillRecipeItem.routes'));
 router.use('/contacts', require('./contact.routes'));
 router.use('/agent-skills', require('./agentSkill.routes'));
 router.use('/faqs', require('./faq.routes'));

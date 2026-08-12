@@ -10,6 +10,16 @@ async function listMyRecipes(req, res, next) {
   }
 }
 
+async function listMyRecipeItems(req, res, next) {
+  try {
+    const userId = req.user.userId;
+    const data = await skillRecipeService.listMyRecipeItems(userId);
+    res.status(200).json({ status: 'success', data });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getRecipeDetail(req, res, next) {
   try {
     const userId = req.user.userId;
@@ -80,6 +90,7 @@ async function removeItem(req, res, next) {
 
 module.exports = {
   listMyRecipes,
+  listMyRecipeItems,
   getRecipeDetail,
   createRecipe,
   renameRecipe,

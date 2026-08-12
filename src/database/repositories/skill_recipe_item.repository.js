@@ -48,6 +48,22 @@ class SkillRecipeItemRepository {
   }
 
   /**
+   * 一次撈出該使用者名下所有 Recipe 的 recipe_id／favorite_id 配對，供前端在
+   * 收藏清單頁一次性標出每個收藏屬於哪些 Recipe，不用逐一打 Recipe 詳情
+   * （N+1）。不 JOIN agent_skill——這裡只需要配對，不需要完整 Skill 資料。
+   */
+  async findAllByUserId(userId, executor = db) {
+    const result = await executor.query(
+      `SELECT ri.recipe_id, ri.favorite_skill_id AS favorite_id
+       FROM skill_recipe_item ri
+       JOIN skill_recipe r ON r.id = ri.recipe_id
+       WHERE r.user_id = $1`,
+      [userId],
+    );
+    return result.rows;
+  }
+
+  /**
    * 查看某個 Recipe 底下有哪些 Agent Skill（透過 favorite 找到對應的 agent_skill）
    */
   async findItemsByRecipeId(recipeId, executor = db) {

@@ -20,6 +20,14 @@ async function listMyRecipes(userId) {
   return skillRecipeRepository.findAllByUserId(userId);
 }
 
+/**
+ * 一次撈出這個使用者名下所有 Recipe 的 recipe_id／favorite_id 配對，
+ * 供收藏清單頁一次性標示 Recipe 標籤，取代逐一打 getRecipeDetail 的 N+1。
+ */
+async function listMyRecipeItems(userId) {
+  return skillRecipeItemRepository.findAllByUserId(userId);
+}
+
 async function getRecipeDetail(userId, recipeId) {
   const recipe = await skillRecipeRepository.assertOwnedByUser(recipeId, userId);
   const items = await skillRecipeItemRepository.findItemsByRecipeId(recipeId);
@@ -71,6 +79,7 @@ async function createDefaultRecipeForNewUser(userId, transaction) {
 
 module.exports = {
   listMyRecipes,
+  listMyRecipeItems,
   getRecipeDetail,
   createRecipe,
   renameRecipe,

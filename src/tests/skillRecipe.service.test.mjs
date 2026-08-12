@@ -22,6 +22,18 @@ describe('skillRecipeService.listMyRecipes', () => {
   });
 });
 
+describe('skillRecipeService.listMyRecipeItems', () => {
+  it('透傳給 repository.findAllByUserId', async () => {
+    const rows = [{ recipe_id: 'r1', favorite_id: 'f1' }];
+    const spy = vi.spyOn(skillRecipeItemRepository, 'findAllByUserId').mockResolvedValue(rows);
+
+    const result = await skillRecipeService.listMyRecipeItems('u1');
+
+    expect(spy).toHaveBeenCalledWith('u1');
+    expect(result).toBe(rows);
+  });
+});
+
 describe('skillRecipeService.getRecipeDetail', () => {
   it('回傳 Recipe 資料合併底下的 Skill 清單', async () => {
     vi.spyOn(skillRecipeRepository, 'assertOwnedByUser').mockResolvedValue({ id: 'r1', name: '常用' });

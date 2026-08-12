@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const skillRecipeService = require('../services/skillRecipe.service');
 const {
-  listMyRecipes, getRecipeDetail, createRecipe, renameRecipe, deleteRecipe, addItem, removeItem,
+  listMyRecipes, listMyRecipeItems, getRecipeDetail, createRecipe, renameRecipe, deleteRecipe, addItem, removeItem,
 } = require('../controllers/skillRecipe.controller');
 
 function createResponse() {
@@ -22,6 +22,19 @@ describe('skillRecipeController.listMyRecipes', () => {
     const res = createResponse();
 
     await listMyRecipes({ user: { userId: 'u1' } }, res, vi.fn());
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ status: 'success', data });
+  });
+});
+
+describe('skillRecipeController.listMyRecipeItems', () => {
+  it('回傳 200 與 recipeId／favoriteId 配對清單', async () => {
+    const data = [{ recipe_id: 'r1', favorite_id: 'f1' }];
+    vi.spyOn(skillRecipeService, 'listMyRecipeItems').mockResolvedValue(data);
+    const res = createResponse();
+
+    await listMyRecipeItems({ user: { userId: 'u1' } }, res, vi.fn());
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ status: 'success', data });

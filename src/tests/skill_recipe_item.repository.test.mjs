@@ -55,6 +55,20 @@ describe('SkillRecipeItemRepository.removeItem', () => {
   });
 });
 
+describe('SkillRecipeItemRepository.findAllByUserId', () => {
+  it('join skill_recipe 依 user_id 撈出該使用者所有 recipe_id／favorite_id 配對', async () => {
+    const rows = [{ recipe_id: 'r1', favorite_id: 'f1' }];
+    const querySpy = vi.spyOn(db, 'query').mockResolvedValue({ rows });
+
+    const result = await skillRecipeItemRepository.findAllByUserId('u1');
+
+    const [sql, params] = querySpy.mock.calls[0];
+    expect(sql).toContain('JOIN skill_recipe');
+    expect(params).toEqual(['u1']);
+    expect(result).toBe(rows);
+  });
+});
+
 describe('SkillRecipeItemRepository.findItemsByRecipeId', () => {
   it('join favorite 與 agent_skill 回傳該 Recipe 底下的 Skill 清單', async () => {
     const rows = [{ id: 'as1', favorite_id: 'f1' }];
