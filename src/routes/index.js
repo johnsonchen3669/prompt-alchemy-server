@@ -17,6 +17,7 @@ router.use('/faqs', require('./faq.routes'));
 router.use('/admin/parameters', require('./admin/parameter.routes'))
 router.use('/admin/users', require('./admin/user.routes'))
 router.use('/admin/skills', require('./admin/skill.routes'))
+router.use('/admin/agent-skills', require('./admin/agentSkill.routes'))
 router.use('/admin/contacts', require('./admin/contact.routes'))
 router.use('/admin/faqs', require('./admin/faq.routes'))
 
