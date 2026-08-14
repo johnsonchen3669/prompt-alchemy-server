@@ -50,8 +50,13 @@ class AgentSkillRepository {
         ON cp.id = s.category_id AND cp.type = 'category'
       WHERE s.id = $1 AND s.is_active = true
     `;
-    const result = await db.query(sql, [id]);
-    return result.rows[0] || null;
+    try {
+      const result = await db.query(sql, [id]);
+      return result.rows[0] || null;
+    } catch (err) {
+      if (err.code === '22P02') return null;
+      throw err;
+    }
   }
 
   // agent_skill 的欄位清單，
@@ -79,8 +84,13 @@ class AgentSkillRepository {
       WHERE id = $1 AND is_active = true
       RETURNING id, copy_count
     `;
-    const result = await db.query(sql, [id]);
-    return result.rows[0] || null;
+    try {
+      const result = await db.query(sql, [id]);
+      return result.rows[0] || null;
+    } catch (err) {
+      if (err.code === '22P02') return null;
+      throw err;
+    }
   }
 
   // --- Admin API Methods ---
@@ -131,8 +141,13 @@ class AgentSkillRepository {
         ON cp.id = s.category_id AND cp.type = 'category'
       WHERE s.id = $1
     `;
-    const result = await db.query(sql, [id]);
-    return result.rows[0] || null;
+    try {
+      const result = await db.query(sql, [id]);
+      return result.rows[0] || null;
+    } catch (err) {
+      if (err.code === '22P02') return null;
+      throw err;
+    }
   }
 
   // 後台新增 Agent Skill

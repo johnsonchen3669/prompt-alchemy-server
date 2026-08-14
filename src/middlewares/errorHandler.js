@@ -22,7 +22,16 @@ function errorHandler(err, req, res, next) {
     return next(err);
   }
 
-  console.error('[Error]', err);
+  const isClientError =
+    err instanceof multer.MulterError ||
+    err.type === 'entity.parse.failed' ||
+    err.code === 'NOT_FOUND' ||
+    Boolean(PG_ERROR_MESSAGES[err.code]) ||
+    (Number.isInteger(err.statusCode || err.status) && (err.statusCode || err.status) >= 400 && (err.statusCode || err.status) < 500);
+
+  if (!isClientError) {
+    console.error('[Error]', err);
+  }
 
   if (err instanceof multer.MulterError) {
     const statusCode = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
