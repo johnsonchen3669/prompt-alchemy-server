@@ -37,7 +37,6 @@
     "multer": "^2.2.0",
     "pg": "^8.22.0",
     "swagger-autogen": "^2.23.7",
-    "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
