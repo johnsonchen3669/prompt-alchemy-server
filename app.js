@@ -10,6 +10,9 @@ const swaggerProtect = require("./src/middlewares/swaggerProtect")
 
 const app = express();
 
+// 信任反向代理（Render 等 PaaS），讓 req.protocol 正確回傳 https
+app.set('trust proxy', true)
+
 app.use(cors())
 app.use(express.json())
 app.use(router)
