@@ -4,7 +4,6 @@ const parameterController = require('../../controllers/admin/parameter.controlle
 
 const { vertfyToken, isAdmin } = require('../../middlewares/authenticate');
 
-// 根據 API 規格：所有 /api/admin/* 都需驗證是否具備 admin 權限
 router.use(vertfyToken, isAdmin);
 
 router.get(

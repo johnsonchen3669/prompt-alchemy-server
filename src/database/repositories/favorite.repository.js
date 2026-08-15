@@ -179,8 +179,6 @@ class FavoriteRepository {
   }
 
   // === Agent Skill 收藏（item_type='skill'，走 skill_id）===
-  // 目前尚無 service/controller 呼叫這些方法；先備妥 repository 層，
-  // 供之後獨立的 Skills 列表頁串接，對外 API 尚未變動。
 
   async lockAgentSkills(agentSkillIds, executor = db) {
     const ids = uniqueIds(agentSkillIds).sort();

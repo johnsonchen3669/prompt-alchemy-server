@@ -1,4 +1,3 @@
-// TODO: favorite controller（add、remove、listMine）
 const favoriteService = require('../services/favorite.service');
 
 // item_type 白名單驗證（CWE-20）：只接受這兩個值，其餘一律視為不合法請求。

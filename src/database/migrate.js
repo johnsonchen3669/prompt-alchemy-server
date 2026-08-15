@@ -2,8 +2,6 @@ const fs = require('fs')
 const path = require('path')
 const { exec } = require('./db')
 
-// 要手動下 npm run db:migrate 才會套用 schema，
-// 避免每次重開伺服器都對資料庫重跑一次 DDL。
 async function migrate() {
   const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
   // 包成 BEGIN;...COMMIT; 用同一次 exec() 呼叫執行：schema.sql 裡不管有幾條 CREATE TABLE，
