@@ -2,6 +2,33 @@
 
 Prompt/Skill 收藏庫：會員登入前台瀏覽、搜尋、篩選、收藏 Prompt/Skill 資料；管理者登入後台管理類別與資料的後端 API server。
 
+## 文件導覽與現行性
+
+`README.md` 維持在 repository 根目錄，作為唯一的文件入口。查閱專案現況時，依下列來源判斷：
+
+| 用途 | 現行依據 |
+|---|---|
+| 路由與執行行為 | [`src/routes/index.js`](src/routes/index.js) 與實際 controller、service、repository |
+| 資料模型 | [`src/database/schema.sql`](src/database/schema.sql) |
+| DB 連線與 migration | [`src/database/db.js`](src/database/db.js)、[`src/database/migrate.js`](src/database/migrate.js) |
+| 可執行指令 | [`package.json`](package.json) |
+| 前後端 API 對接 | [`docs/FRONTEND_API_SPEC.md`](docs/FRONTEND_API_SPEC.md) |
+| 生成的 OpenAPI | [`docs/openapi/swagger-output.json`](docs/openapi/swagger-output.json)，路由異動後以 `npm run swagger` 更新 |
+| 架構決策 | [`docs/adr/`](docs/adr/) |
+| 歷史計畫 | [`docs/archive/`](docs/archive/)；只代表封存當時的狀態 |
+
+若內容互相衝突，優先順序為：**實際程式碼、schema 與 `package.json` → 重新生成的 OpenAPI → 維護中的 API 規格 → archive**。
+
+### 文件封存規則
+
+1. 以封存日期建立 `docs/archive/YYYY-MM-DD/`，同批文件放在同一個日期目錄。
+2. 完整正文只搬移並保存一份；archive 正文凍結，不再跟著現況更新。
+3. 原路徑只保留 deprecated pointer，避免既有連結失效或讀者誤認為現行文件。
+4. 封存文件需記錄 `archived_at`、`original_path`、`source_last_updated`、`maintenance` 與 `canonical_sources`。
+5. 新增封存批次時，同步更新本節的歷史文件入口；完整政策見 [`docs/adr/0002-document-archive-policy.md`](docs/adr/0002-document-archive-policy.md)。
+
+目前 `docs/plan.md` 與 `docs/dev-plan.md` 已封存至 [`docs/archive/2026-08-15/`](docs/archive/2026-08-15/)；原路徑僅保留導向現行來源的指標。
+
 ## 技術棧
 
 - Express 5、cors、dotenv
@@ -85,9 +112,16 @@ prompt-alchemy-server/
 ├── docker-compose.yml       # 可選：想切換成本地 Docker PostgreSQL 才需要，見下方說明
 │
 ├── docs/
-│   ├── plan.md                   # PRD（產品目標、角色權限、API 規格、錯誤處理、邊界情境）
-│   ├── dev-plan.md               # 資料庫手把手實作教學 + 端點對應表（MVP / 加分功能分層）
-│   ├── FRONTEND_API_SPEC.md      # 前端提供的完整 API 需求規格，加分功能的 request/response 範例以此為準
+│   ├── plan.md                   # 早期 PRD 的封存指標（非現行規格）
+│   ├── dev-plan.md               # 早期實作教學的封存指標（非現行步驟）
+│   ├── FRONTEND_API_SPEC.md      # 前後端 API 對接規格
+│   ├── adr/
+│   │   ├── 0001-agent-skill-install-mechanism.md
+│   │   └── 0002-document-archive-policy.md
+│   ├── archive/
+│   │   └── 2026-08-15/
+│   │       ├── plan.md           # 早期 PRD 唯讀快照
+│   │       └── dev-plan.md       # 早期實作教學唯讀快照
 │   └── openapi/
 │       ├── components.yaml       # 早期手寫的 schema 元件草稿，目前 swagger-autogen 沒有使用這份
 │       └── swagger-output.json   # swagger-autogen 產生的 OpenAPI 3.0 文件快照（npm run swagger 重新產生）
@@ -282,4 +316,4 @@ docker compose up -d
 # 然後在 .env.development 填入 DATABASE_URL，再重跑 npm run dev:setup
 ```
 
-詳細步驟、`psql` 操作示範、跟正式環境的切換方式，見 [`docs/dev-plan.md`](docs/dev-plan.md)。
+目前的資料庫行為與可執行指令請以 [`src/database/db.js`](src/database/db.js)、[`src/database/migrate.js`](src/database/migrate.js)、[`src/database/schema.sql`](src/database/schema.sql) 與 [`package.json`](package.json) 為準。早期的 `psql` 操作示範與實作教學仍保留在 [`docs/archive/2026-08-15/dev-plan.md`](docs/archive/2026-08-15/dev-plan.md)，但其中的 scripts、schema 與測試步驟只代表當時狀態。

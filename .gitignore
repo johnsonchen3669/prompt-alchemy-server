@@ -19,5 +19,14 @@ AGENTS.md
 docs/
 CONTEXT.md
 # --- H-System Mount (end) ---
+
+# Project-maintained documentation
+!docs/
+docs/*
+!docs/archive/
+!docs/archive/**
+!docs/adr/
+!docs/adr/**
+
 coverage/
 .testagent/
