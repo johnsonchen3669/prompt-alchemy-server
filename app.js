@@ -24,7 +24,11 @@ if (swagger.enabled) {
     const baseUrl = `${req.protocol}://${req.get('host')}`
     res.json({ ...swaggerDocument, servers: [{ url: baseUrl }] })
   });
-  app.use('/docs', swaggerProtect, swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  app.use('/docs', swaggerProtect, swaggerUi.serve, (req, res, next) => {
+    const baseUrl = `${req.protocol}://${req.get('host')}`
+    const dynamicDoc = { ...swaggerDocument, servers: [{ url: baseUrl }] }
+    swaggerUi.setup(dynamicDoc)(req, res, next)
+  });
   app.use('/scalar', swaggerProtect, apiReference({ url: '/openapi.json' }))
 }
 
