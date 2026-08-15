@@ -16,6 +16,11 @@ if (NODE_ENV === "production") {
   }
 }
 
+const swaggerEnabled =
+  process.env.SWAGGER_ENABLED !== undefined
+    ? process.env.SWAGGER_ENABLED === 'true'
+    : NODE_ENV !== 'production';
+
 module.exports = {
   nodeEnv: NODE_ENV,
   JWT_SECRET: process.env.JWT_SECRET,
@@ -27,4 +32,9 @@ module.exports = {
     bucketName: process.env.GCP_BUCKET_NAME,
   },
   databaseUrl: process.env.DATABASE_URL,
+  swagger: {
+    enabled: swaggerEnabled,
+    basicAuthUser: process.env.SWAGGER_BASIC_AUTH_USER,
+    basicAuthPass: process.env.SWAGGER_BASIC_AUTH_PASS,
+  },
 };
