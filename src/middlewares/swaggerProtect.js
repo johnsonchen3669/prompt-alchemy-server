@@ -10,11 +10,9 @@ const { swagger } = require('../config/env')
 module.exports = function swaggerProtect(req, res, next) {
   const { basicAuthUser, basicAuthPass } = swagger
 
+  // 未設定帳密時不啟用 Basic Auth（開發環境直接放行）
   if (!basicAuthUser || !basicAuthPass) {
-    return res.status(500).json({
-      status: 'error',
-      message: 'Swagger 已啟用但未設定 SWAGGER_BASIC_AUTH_USER / SWAGGER_BASIC_AUTH_PASS',
-    })
+    return next()
   }
 
   const authHeader = req.headers.authorization
