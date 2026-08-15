@@ -1,10 +1,14 @@
-const { port } = require('./src/config/env')
+const { port, swagger } = require('./src/config/env')
 const app = require('./app')
 
 const server = app.listen(port, () => {
   console.log(`Server 啟動在 http://localhost:${port}`);
-  console.log(`Swagger UI：http://localhost:${port}/docs`);
-  console.log(`Scalar UI：http://localhost:${port}/scalar`);
+  if (swagger.enabled) {
+    console.log(`Swagger UI：http://localhost:${port}/docs`);
+    console.log(`Scalar UI：http://localhost:${port}/scalar`);
+  } else {
+    console.log('Swagger 已關閉');
+  }
 });
 
 server.on('error', (err) => {
