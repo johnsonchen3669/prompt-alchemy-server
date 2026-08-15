@@ -1,6 +1,6 @@
 # Prompt 鍊金坊 Prompt Alchemy — Server
 
-Prompt/Skill 收藏庫：會員登入前台瀏覽、搜尋、篩選、收藏 Prompt/Skill 資料；管理者登入後台管理類別與資料的後端 API server。
+Prompt 鍊金坊的後端 API server，提供 Prompt 與 Agent Skill 瀏覽、搜尋、收藏、Recipe 組合與安裝指令，並支援 FAQ、聯絡表單及管理後台。
 
 ## 文件導覽與現行性
 
@@ -8,16 +8,16 @@ Prompt/Skill 收藏庫：會員登入前台瀏覽、搜尋、篩選、收藏 Pro
 
 | 用途 | 現行依據 |
 |---|---|
-| 路由與執行行為 | [`src/routes/index.js`](src/routes/index.js) 與實際 controller、service、repository |
+| 路由與執行行為 | [`app.js`](app.js)、[`src/routes/index.js`](src/routes/index.js) 與實際 controller、service、repository |
 | 資料模型 | [`src/database/schema.sql`](src/database/schema.sql) |
 | DB 連線與 migration | [`src/database/db.js`](src/database/db.js)、[`src/database/migrate.js`](src/database/migrate.js) |
-| 可執行指令 | [`package.json`](package.json) |
-| 前後端 API 對接 | [`docs/FRONTEND_API_SPEC.md`](docs/FRONTEND_API_SPEC.md) |
-| 生成的 OpenAPI | [`docs/openapi/swagger-output.json`](docs/openapi/swagger-output.json)，路由異動後以 `npm run swagger` 更新 |
+| 可執行指令與套件 | [`package.json`](package.json) |
+| 前後端 API 對接參考 | [`docs/FRONTEND_API_SPEC.md`](docs/FRONTEND_API_SPEC.md)；實際端點仍以 route code 為準 |
+| 生成的 OpenAPI 快照 | [`docs/openapi/swagger-output.json`](docs/openapi/swagger-output.json) |
 | 架構決策 | [`docs/adr/`](docs/adr/) |
 | 歷史計畫 | [`docs/archive/`](docs/archive/)；只代表封存當時的狀態 |
 
-若內容互相衝突，優先順序為：**實際程式碼、schema 與 `package.json` → 重新生成的 OpenAPI → 維護中的 API 規格 → archive**。
+若內容互相衝突，優先順序為：**實際程式碼、schema 與 `package.json` → 依目前路由重新生成的 OpenAPI → 維護中的 API 規格 → archive**。
 
 ### 文件封存規則
 
@@ -27,293 +27,405 @@ Prompt/Skill 收藏庫：會員登入前台瀏覽、搜尋、篩選、收藏 Pro
 4. 封存文件需記錄 `archived_at`、`original_path`、`source_last_updated`、`maintenance` 與 `canonical_sources`。
 5. 新增封存批次時，同步更新本節的歷史文件入口；完整政策見 [`docs/adr/0002-document-archive-policy.md`](docs/adr/0002-document-archive-policy.md)。
 
-目前 `docs/plan.md` 與 `docs/dev-plan.md` 已封存至 [`docs/archive/2026-08-15/`](docs/archive/2026-08-15/)；原路徑僅保留導向現行來源的指標。
+`docs/plan.md` 與 `docs/dev-plan.md` 已封存至 [`docs/archive/2026-08-15/`](docs/archive/2026-08-15/)；原路徑僅保留導向現行來源的指標。
+
+## 實際功能
+
+- **公開內容**：Prompt、Agent Skill、FAQ 瀏覽，以及複製次數統計與 Agent Skill 安裝指令。
+- **會員功能**：註冊／登入、Prompt 與 Agent Skill 收藏、Recipe 建立與項目管理。
+- **聯絡表單**：公開送出聯絡資料，管理者可查詢、更新處理狀態或刪除。
+- **管理後台**：Parameters、Users、Prompt/Skill、Agent Skills、Contacts、FAQs 管理。
+- **檔案上傳**：透過 GCP Cloud Storage 儲存上傳檔案。
 
 ## 技術棧
 
-- Express 5、cors、dotenv
-- 認證：jsonwebtoken、bcrypt
-- API 文件：`swagger-autogen`（掃描 `app.js` 的路由自動產生 OpenAPI 3.0 規格）+ `swagger-ui-express` + `@scalar/express-api-reference`
-- 測試：Vitest 已安裝為 devDependency，`npm test` 對應 `vitest run`，但目前尚未撰寫任何測試檔
-- 資料持久化：本地開發預設用內嵌的 **PGlite**（`@electric-sql/pglite`，免安裝、免啟動任何資料庫服務），也可以透過 `DATABASE_URL` 切換成真正的 PostgreSQL（本地 Docker 容器或遠端/正式環境），依 `NODE_ENV` 自動載入對應的 `.env.{NODE_ENV}` 檔。不使用 ORM，`src/database/schema.sql` 手寫 DDL，`src/database/repositories` 用參數化 SQL 查詢
+- **Runtime / Framework**：Node.js、CommonJS、Express 5、cors、dotenv
+- **認證與密碼**：jsonwebtoken、bcrypt
+- **資料庫**：PostgreSQL（`pg`）與本地內嵌 PGlite（`@electric-sql/pglite`）
+- **資料存取**：手寫 DDL 與參數化 SQL，不使用 ORM
+- **檔案上傳**：multer、`@google-cloud/storage`
+- **API 文件**：swagger-autogen、swagger-ui-express、`@scalar/express-api-reference`
+- **測試**：Vitest；測試位於 [`src/tests/`](src/tests/)，以 `npm test` 執行
 
-## 專案資料夾架構
+## 專案架構
 
+### 執行時請求流
+
+一般的 API 請求會依下列分層處理；部分模組會略過 service 或 repository，實際例外列在後方的模組表。
+
+```text
+server.js
+└── app.js
+    ├── cors / express.json
+    ├── src/routes/index.js
+    │   └── route-level middleware（JWT、admin、multer）
+    │       └── controller
+    │           └── service
+    │               └── src/database/repositories
+    │                   └── src/database/db.js
+    │                       ├── pg.Pool（設定 DATABASE_URL）
+    │                       └── PGlite（未設定 DATABASE_URL）
+    ├── Swagger routes（依環境設定啟用）
+    ├── 404 handler
+    └── errorHandler
 ```
+
+`server.js` 負責啟動 HTTP server；`app.js` 組裝全域 middleware、應用 routes、條件式 Swagger、404 與錯誤處理；`src/routes/index.js` 是所有實際 API prefix 的集中掛載入口。
+
+### 目錄與關鍵實作
+
+```text
 prompt-alchemy-server/
 ├── src/
 │   ├── config/
-│   │   ├── env.js                       # 依 NODE_ENV 載入對應 .env.{NODE_ENV} 檔，集中讀取環境變數（NODE_ENV、PORT、JWT_SECRET、DATABASE_URL）
-│   │   ├── favorite.config.js           # DEFAULT_FAVORITE_SKILL_IDS：恢復預設收藏 / 註冊時自動建立的預設收藏清單
-│   │   └── swagger.js                   # swagger-autogen 產生器：掃描 app.js 路由，輸出 docs/openapi/swagger-output.json
-│   │
+│   │   ├── env.js                              # 環境變數、production 必填檢查與 Swagger 設定
+│   │   ├── favorite.config.js                  # 預設收藏設定
+│   │   └── swagger.js                          # OpenAPI 產生器
 │   ├── middlewares/
-│   │   └── authenticate.js              # vertfyToken：驗證 Authorization Bearer JWT，設定 req.user；isAdmin：檢查 req.user.role === 'admin'
-│   │
+│   │   ├── authenticate.js                     # Bearer JWT 與 admin 權限
+│   │   ├── errorHandler.js                     # 集中錯誤處理
+│   │   └── swaggerProtect.js                   # Swagger Basic Auth
 │   ├── database/
-│   │   ├── db.js                        # 統一的 query(text, params)/exec(sql)，依 DATABASE_URL 切換 PGlite / pg.Pool
-│   │   ├── schema.sql                   # users、parameters、skill_item、favorite 四張表手寫 DDL（id 皆為 UUID，DEFAULT gen_random_uuid()）
-│   │   ├── migrate.js                   # 套用 schema.sql（npm run dev:init）
-│   │   ├── seed.js                      # 建立預設管理者/測試會員帳號、parameters 參數表與 Prompt/Skill 種子資料，已存在則略過（npm run dev:seed，冪等）
+│   │   ├── db.js                               # query、exec、transaction 與 pg.Pool / PGlite 切換
+│   │   ├── migrate.js                          # 套用 schema.sql
+│   │   ├── schema.sql                          # 目前資料表 DDL
+│   │   ├── seed.js                             # 基礎使用者、參數、Prompt/Skill、FAQ 與預設收藏
+│   │   ├── seed_skill.js                       # Agent Skill 種子資料
+│   │   ├── docker-init/                        # 目前空目錄，沒有初始化 SQL
 │   │   └── repositories/
-│   │       ├── user.repository.js       # createUser / findUserByEmail / findUserById / getUsers / updateUser
-│   │       ├── parameter.repository.js  # parameters 表的 CRUD 查詢
-│   │       ├── prompt.repository.js     # skill_item 表的前台查詢 + 後台 CRUD 查詢
-│   │       └── favorite.repository.js   # favorite 表的查詢/新增/刪除
-│   │
+│   │       ├── agent_skill.repository.js       # Agent Skill 公開查詢與後台管理
+│   │       ├── contact.repository.js           # 聯絡表單建立、查詢、狀態與刪除
+│   │       ├── faq.repository.js               # FAQ 公開／後台查詢、建立、更新與軟刪除
+│   │       ├── favorite.repository.js          # Prompt／Agent Skill 收藏資料存取
+│   │       ├── parameter.repository.js         # 參數查詢與管理
+│   │       ├── prompt.repository.js            # skill_item 公開查詢與後台管理
+│   │       ├── skill_recipe.repository.js      # Recipe 所有權與資料存取
+│   │       ├── skill_recipe_item.repository.js # Recipe 與收藏項目的關聯資料
+│   │       └── user.repository.js              # 會員登入、資料查詢與後台管理
 │   ├── services/
-│   │   ├── auth.service.js              # 註冊/登入/取得登入者業務邏輯（含註冊時建立預設收藏）
-│   │   ├── favorite.service.js          # 收藏業務邏輯
-│   │   ├── parameter.service.js         # 後台參數（分類/標籤/模型...）業務邏輯
-│   │   ├── prompt.service.js            # Prompt/Skill 業務邏輯（含前台/後台共用的欄位轉換）
-│   │   └── upload.service.js            # 檔案上傳至 GCP Bucket
-│   │
+│   │   ├── agentSkill.service.js               # Agent Skill 查詢、安裝指令、計數與 API mapping
+│   │   ├── auth.service.js                     # 註冊交易與新會員預設資料
+│   │   ├── contact.service.js                  # 聯絡表單建立與後台處理
+│   │   ├── faq.service.js                      # FAQ 驗證、公開／後台操作與 mapping
+│   │   ├── favorite.service.js                 # Prompt／Agent Skill 收藏與預設收藏
+│   │   ├── parameter.service.js                # Parameter 驗證與後台管理
+│   │   ├── prompt.service.js                   # Prompt 查詢、複製計數與 API mapping
+│   │   ├── skillInstallCommand.service.js      # Agent Skill／Recipe 共用安裝指令 builder
+│   │   ├── skillRecipe.service.js              # Recipe、Recipe Item 與批次安裝指令
+│   │   └── upload.service.js                   # GCP Cloud Storage 上傳
+│   ├── controllers/                            # HTTP request/response handlers；含前台與會員模組
+│   │   └── admin/                              # 管理後台 handlers
+│   ├── routes/
+│   │   ├── index.js                            # 所有實際 route prefix 的掛載入口
+│   │   └── admin/                              # 管理後台 routes
 │   ├── scripts/
-│   │   └── updateAdmin.js               # 手動建立/重設管理者帳號密碼與 role 的一次性腳本
-│   │
-│   ├── tests/
-│   │   └── read-favorites.js            # 手動執行的收藏資料檢查腳本（非 Vitest 測試檔）
-│   │
-│   ├── controllers/
-│   │   ├── health.controller.js
-│   │   ├── auth.controller.js           # register / login / logout / getUser
-│   │   ├── utility.controller.js        # 檔案上傳（GCP Bucket）
-│   │   ├── prompt.controller.js         # 前台 Prompt 列表 / 詳情 / 複製次數累加
-│   │   ├── category.controller.js       # TODO：前台 category（尚未實作，空殼）
-│   │   ├── favorite.controller.js       # 收藏功能：getMyFavorites / checkFavoriteStatus / toggleFavorite / clearMyFavorites / restoreDefaultFavorites
-│   │   ├── skill.controller.js          # TODO：前台 skill（尚未實作，空殼；功能已由 prompt.controller 涵蓋，待確認是否仍需要）
-│   │   └── admin/
-│   │       ├── parameter.controller.js  # 後台參數管理（新增/修改/刪除）
-│   │       ├── skill.controller.js      # 後台 Prompt/Skill 管理（列表/詳情/新增/修改）
-│   │       ├── user.controller.js       # 後台會員管理（列表/修改）
-│   │       └── category.controller.js   # TODO：尚未實作，空殼（分類已併入 admin/parameter 用 type=category 管理，這支可能會廢除）
-│   │
-│   └── routes/
-│       ├── index.js                     # 統一掛載 /health、/auth、/utility、/prompts、/favorites、/admin/parameters、/admin/users、/admin/skills，app.js 只 require 這一個入口
-│       ├── health.routes.js             # GET /
-│       ├── auth.routes.js               # /register、/login、/logout（需登入）、/me（需登入）
-│       ├── utility.routes.js            # POST /upload
-│       ├── prompt.routes.js             # GET /、GET /:id、POST /:id/copy
-│       ├── category.routes.js           # TODO：空殼，尚未掛載任何 endpoint，index.js 也還沒 use
-│       ├── favorite.routes.js           # GET /、DELETE /、GET /:skillId/status、POST /:skillId/toggle、POST /defaults（皆需登入，router.use(vertfyToken)）
-│       ├── skill.routes.js              # TODO：空殼，尚未掛載任何 endpoint，index.js 也還沒 use
-│       └── admin/
-│           ├── parameter.routes.js      # GET /、POST /、PUT /:id、DELETE /:id（皆需 admin）
-│           ├── skill.routes.js          # GET /、POST /、GET /:id、PUT /:id（皆需 admin）
-│           ├── user.routes.js           # GET /、PUT /:id（皆需 admin）
-│           └── category.routes.js       # TODO：空殼，尚未掛載任何 endpoint，index.js 也還沒 use
-│
-├── app.js                   # 組裝 express app（cors/json/routes/API 文件），export app，不呼叫 listen
-├── server.js                # require('./config/env') → require('./app') → app.listen(PORT)
-├── .env.development         # 開發環境變數，.gitignore 排除，不進版控（需自行從 .env.example 複製建立）
-├── .env.production          # 雲端/正式環境變數，含真實連線資訊，.gitignore 排除，不進版控（目前 repo 內尚未建立）
-├── .env.example             # 環境變數範本（唯一進版控的 env 檔，不含真實值）
-├── .pglite-data/            # 本地內嵌 PGlite 的資料檔（.gitignore 排除，執行 dev:init 後自動產生）
-├── docker-compose.yml       # 可選：想切換成本地 Docker PostgreSQL 才需要，見下方說明
-│
+│   │   └── updateAdmin.js                      # 一次性管理者更新腳本
+│   ├── tests/                                  # Vitest 測試與手動測試輔助檔案
+│   └── utils/                                  # 目前空目錄、尚未使用
 ├── docs/
-│   ├── plan.md                   # 早期 PRD 的封存指標（非現行規格）
-│   ├── dev-plan.md               # 早期實作教學的封存指標（非現行步驟）
-│   ├── FRONTEND_API_SPEC.md      # 前後端 API 對接規格
-│   ├── adr/
-│   │   ├── 0001-agent-skill-install-mechanism.md
-│   │   └── 0002-document-archive-policy.md
-│   ├── archive/
-│   │   └── 2026-08-15/
-│   │       ├── plan.md           # 早期 PRD 唯讀快照
-│   │       └── dev-plan.md       # 早期實作教學唯讀快照
+│   ├── FRONTEND_API_SPEC.md                    # 前後端對接參考
+│   ├── adr/                                    # 架構決策紀錄
+│   ├── archive/                                # 日期化唯讀歷史快照
+│   ├── plan.md                                 # 早期 PRD 的 deprecated pointer
+│   ├── dev-plan.md                             # 早期教學的 deprecated pointer
 │   └── openapi/
-│       ├── components.yaml       # 早期手寫的 schema 元件草稿，目前 swagger-autogen 沒有使用這份
-│       └── swagger-output.json   # swagger-autogen 產生的 OpenAPI 3.0 文件快照（npm run swagger 重新產生）
-│
+│       └── swagger-output.json                 # swagger-autogen 產生的快照
+├── app.js                                      # Express app、routes、條件式 Swagger 與錯誤處理
+├── server.js                                   # 啟動 HTTP server
+├── docker-compose.yml                          # 可選的本地 PostgreSQL
+├── .env.example                                # 唯一納管的環境變數範本
 └── package.json
 ```
 
-> `health`、`auth`、前台 `prompts`、`favorites`、`utility/upload`、後台 `admin/parameters`、`admin/skills`、`admin/users` 已完成並掛載（部分端點還缺規格要求的動作，見下表打 ❌ 的列）。前台 `category`/`skill` 與後台 `admin/category` 目前只是空殼 route/controller，沒有任何 endpoint，`src/routes/index.js` 也還沒 `use` 這三支。
+`src/routes/index.js` 目前掛載公開／會員 prefixes：`/health`、`/auth`、`/utility`、`/prompts`、`/favorites`、`/me/recipes`、`/me/recipe-items`、`/contacts`、`/agent-skills`、`/faqs`；後台 prefixes：`/admin/parameters`、`/admin/users`、`/admin/skills`、`/admin/agent-skills`、`/admin/contacts`、`/admin/faqs`。
+
+目前由 `src/routes/index.js` 掛載的 16 個 leaf route modules 與其使用的 15 個 controllers 均已實作；`src/controllers/` 與 `src/routes/` 內沒有 skeleton、空檔或未掛載的 leaf module。`src/routes/index.js` 本身是集中掛載用的 aggregator。
+
+### 分層責任
+
+| 層 | 責任 |
+|---|---|
+| `server.js` / `app.js` | 啟動 server、組裝 Express、條件式 Swagger、404 與全域錯誤處理 |
+| Routes | 宣告 endpoint、掛載 prefix，並套用 JWT、admin 或 multer 等 route-level middleware |
+| Middlewares | 驗證 JWT 與 admin 權限、保護 Swagger，以及集中轉換應用程式錯誤 |
+| Controllers | 讀取 request、呼叫下層並組裝 HTTP response |
+| Services | 執行業務規則、輸入驗證、欄位轉換、transaction 與跨 repository 協作 |
+| Repositories | 使用參數化 SQL 存取資料表，並處理資料鎖定與持久化操作 |
+| `database/db.js` | 統一提供 `query`、`exec`、`withTransaction`，依設定切換 PostgreSQL／PGlite |
+| External storage | `upload.service.js` 將檔案寫入 GCP Cloud Storage，不經 database |
+
+### 主要模組資料流
+
+| 模組 | 主要執行鏈 | 權限 |
+|---|---|---|
+| Health | route → `health.controller.js` | 公開 |
+| Auth register | route → `auth.controller.js` → `auth.service.js` → transaction → user／favorite／recipe repositories | 公開 |
+| Auth login／me／logout | route → `auth.controller.js`；login／me 直接使用 `user.repository.js` | login 公開；logout／me 需 JWT |
+| Prompts／Agent Skills／FAQs | controller → 對應 service → repository | 公開 |
+| Favorites | controller → `favorite.service.js` → `favorite.repository.js` | JWT |
+| Recipes／Recipe Items | controller → `skillRecipe.service.js` → recipe repositories | JWT |
+| Contacts | controller → `contact.service.js` → `contact.repository.js` | 公開；後台管理需 JWT + admin |
+| Admin Parameters／FAQs／Contacts | admin controller → 對應 service → repository | JWT + admin |
+| Admin Prompts／Agent Skills／Users | admin controller → repository，部分重用 service mapper | JWT + admin |
+| Upload | route／multer → `utility.controller.js` → `upload.service.js` → GCP Storage | 公開；不經 database |
+
+一般分層不是所有 endpoint 的硬性規則：Auth register 由 `auth.service.js` 開啟 transaction，跨 `user.repository.js`、`favorite.service.js` 與 `skillRecipe.service.js` 建立會員及預設資料；Auth login／me 直接使用 `user.repository.js`，其中 login 的 bcrypt 驗證與 JWT 簽發位於 controller，logout 只回傳成功訊息而不撤銷既有 JWT。Admin Prompts 與 Admin Agent Skills 直接使用 repository 並重用對應 service 的 API mapper；Admin Users 直接使用 `user.repository.js`；Health 不經 service／repository。`skillInstallCommand.service.js` 是 Agent Skill 與 Recipe 共用的純指令 builder，不存取 database；需要 transaction 的 Favorites 操作也由 service 開啟後再呼叫 repository。
+
+### 空檔與空目錄
+
+目前 `src/` 沒有空檔；空目錄只有 `src/database/docker-init/` 與 `src/utils/`。
+
+`src/database/schema.sql` 目前包含 9 張表：`users`、`parameters`、`skill_item`、`agent_skill`、`favorite`、`skill_recipe`、`skill_recipe_item`、`faqs`、`contacts`。各表主鍵設計不同，例如 `favorite.id` 使用 BIGINT identity，`skill_recipe_item` 使用複合主鍵；欄位型別請直接以 schema 為準。
 
 ## API 路由
 
-> 完成欄位：✅ 已實作並掛載、❌ 尚未實作（規格要求但目前打不通）。所有路徑都沒有 `/api` 前綴，直接掛在根路徑下。
+所有 API 都直接掛在根路徑，沒有 `/api` 前綴。權限欄位中的 `JWT` 表示需帶 `Authorization: Bearer <token>`；`JWT + admin` 另需管理者角色。
 
 ### Health
 
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ✅ | MVP | GET | `/health` | 公開 | 確認服務存活狀態 |
-
-### API 文件（app.js 直接掛載，非 src/routes）
-
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ✅ | - | GET | `/openapi.json` | 公開 | swagger-autogen 產生的 OpenAPI 3.0 規格 |
-| ✅ | - | GET | `/docs` | 公開 | Swagger UI |
-| ✅ | - | GET | `/scalar` | 公開 | Scalar API Reference |
-
-> 目前所有已掛載的端點（含 `/favorites` 系列）都有 `#swagger` 註解並收錄在 `docs/openapi/swagger-output.json`。新增或改動路由後記得跑 `npm run swagger` 重新產生。
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/health` | 公開 | 取得服務存活狀態與 timestamp |
 
 ### Auth
 
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ✅ | MVP | POST | `/auth/login` | 公開 | 會員/管理者登入 |
-| ✅ | MVP | POST | `/auth/logout` | 已登入 | 登出 |
-| ✅ | MVP | GET | `/auth/me` | 已登入 | 取得目前登入者資訊 |
-| ✅ | 加分 | POST | `/auth/register` | 公開 | 會員註冊 |
-
-### 前台 Prompt/Skill
-
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ❌ | MVP | GET | `/categories` | 已登入 | 取得類別列表（`category.routes.js` 是空殼，index.js 也未掛載；目前只能用 `/admin/parameters?type=category`） |
-| ❌ | MVP | GET | `/skills` | 已登入 | 取得列表，支援 `keyword`、`categoryId`（`skill.routes.js` 是空殼，index.js 也未掛載；功能暫由 `/prompts` 代替） |
-| ❌ | MVP | GET | `/skills/:id` | 已登入 | 取得單筆詳情（同上，暫由 `/prompts/:id` 代替） |
-| ✅ | 加分 | GET | `/prompts` | 公開 | 取得上架中的 Prompt 列表，支援 `category`、`tag`、`search` query |
-| ✅ | 加分 | GET | `/prompts/:id` | 公開 | 取得單一 Prompt 詳細內容 |
-| ✅ | 加分 | POST | `/prompts/:id/copy` | 公開 | 增加 Prompt 複製使用次數 |
-
-### Favorites
-
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ✅ | 加分 | GET | `/favorites` | 已登入 | 取得我的收藏清單 |
-| ✅ | 加分 | GET | `/favorites/:skillId/status` | 已登入 | 檢查單一 Skill 是否已收藏 |
-| ✅ | 加分 | POST | `/favorites/:skillId/toggle` | 已登入 | 切換收藏狀態（新增/取消） |
-| ✅ | 加分 | DELETE | `/favorites` | 已登入 | 清除我的所有收藏 |
-| ✅ | 加分 | POST | `/favorites/defaults` | 已登入 | 恢復預設收藏 |
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| POST | `/auth/register` | 公開 | 建立會員與預設資料 |
+| POST | `/auth/login` | 公開 | 登入並回傳有效期 7 日的 JWT |
+| POST | `/auth/logout` | JWT | 回傳登出成功訊息；不撤銷既有 JWT |
+| GET | `/auth/me` | JWT | 取得目前登入者資料 |
 
 ### Utility
 
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ✅ | 加分 | POST | `/utility/upload` | 公開 | 上傳檔案至 GCP Bucket（multipart/form-data，欄位名 `file`，上限 10MB） |
-| ❌ | 加分 | GET | `/utility/categories` | 公開 | 取得分類選單列表 |
-| ❌ | 加分 | GET | `/utility/tags` | 公開 | 取得標籤清單 |
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| POST | `/utility/upload` | 公開 | 上傳檔案至 GCP Bucket；`multipart/form-data`、欄位 `file`、上限 10 MB |
 
-### Admin Categories
+### Prompts
 
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ❌ | MVP | POST | `/admin/categories` | admin | 新增類別（`admin/category.routes.js` 是空殼，index.js 也未掛載；改用 `POST /admin/parameters` 帶 `type=category`） |
-| ❌ | MVP | PATCH | `/admin/categories/:id` | admin | 編輯類別（改用 `PUT /admin/parameters/:id`） |
-| ❌ | MVP | DELETE | `/admin/categories/:id` | admin | 刪除類別（改用 `DELETE /admin/parameters/:id`） |
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/prompts` | 公開 | 取得上架 Prompt 列表，支援 `category`、`tag`、`search` query |
+| GET | `/prompts/:id` | 公開 | 取得上架 Prompt 詳情 |
+| POST | `/prompts/:id/copy` | 公開 | 將 Prompt 的 `copy_count` 加 1 |
 
-### Admin Skills
+### Favorites
 
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ✅ | MVP | POST | `/admin/skills` | admin | 新增 Prompt/Skill |
-| ❌ | MVP | PATCH | `/admin/skills/:id` | admin | 編輯 Prompt/Skill（目前只有 `PUT /admin/skills/:id`，但它本身支援部分更新） |
-| ❌ | MVP | DELETE | `/admin/skills/:id` | admin | 刪除 Prompt/Skill |
-| ✅ | 加分 | GET | `/admin/skills` | admin | 取得後台 Prompt 列表，支援 `keyword`、`contentTypeId`、`categoryId`、`active` query |
-| ✅ | 加分 | GET | `/admin/skills/:id` | admin | 取得單筆後台 Prompt |
-| ✅ | 加分 | PUT | `/admin/skills/:id` | admin | 修改 Prompt（支援部分／完整更新） |
-| ❌ | 加分 | PATCH | `/admin/skills/:id/active` | admin | 切換啟用/停用狀態（目前用 `PUT /admin/skills/:id` 帶 `isActive` 替代） |
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/favorites` | JWT | 依 `itemType=prompt|skill` 取得本人收藏 |
+| DELETE | `/favorites` | JWT | 清除本人全部 Prompt 與 Agent Skill 收藏 |
+| GET | `/favorites/:skillId/status` | JWT | 依 `itemType` 查詢單筆收藏狀態 |
+| POST | `/favorites/:skillId/toggle` | JWT | 依 `itemType` 新增或取消收藏 |
+| POST | `/favorites/defaults` | JWT | 清除全部收藏後，恢復預設 Prompt 收藏 |
+
+### Recipes
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/me/recipes` | JWT | 取得本人的 Recipe 列表 |
+| POST | `/me/recipes` | JWT | 建立 Recipe |
+| GET | `/me/recipes/:id` | JWT | 取得本人單一 Recipe |
+| PATCH | `/me/recipes/:id` | JWT | 重新命名 Recipe（只更新 `name`） |
+| PATCH | `/me/recipes/:id/last-selected-agent` | JWT | 更新最後選擇的 Agent |
+| DELETE | `/me/recipes/:id` | JWT | 刪除 Recipe |
+| GET | `/me/recipes/:id/install-command` | JWT | 依必要的 `agent=claude-code|codex|cursor` query 取得 Recipe 安裝指令 |
+| POST | `/me/recipes/:id/items` | JWT | 將本人已收藏的 Agent Skill 加入 Recipe（body：`favoriteId`） |
+| DELETE | `/me/recipes/:id/items/:favoriteId` | JWT | 從 Recipe 移除 Agent Skill 項目，不影響收藏狀態 |
+
+### Recipe Items
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/me/recipe-items` | JWT | 取得本人 Recipe item 對照資料 |
+
+### Contacts
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| POST | `/contacts` | 公開 | 送出聯絡表單 |
+
+### Agent Skills
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/agent-skills` | 公開 | 取得上架 Agent Skill 列表 |
+| GET | `/agent-skills/:id` | 公開 | 取得 Agent Skill 詳情 |
+| GET | `/agent-skills/:id/install-command` | 公開 | 依必要的 `agent=claude-code|codex|cursor` query 取得安裝指令 |
+| POST | `/agent-skills/:id/copy` | 公開 | 增加 Agent Skill 複製次數 |
+
+### FAQs
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/faqs` | 公開 | 取得公開 FAQ 列表 |
 
 ### Admin Parameters
 
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ✅ | 加分 | GET | `/admin/parameters` | admin | 取得所有參數列表（分類/標籤/模型...），可用 `type` 篩選 |
-| ✅ | 加分 | POST | `/admin/parameters` | admin | 新增參數 |
-| ✅ | 加分 | PUT | `/admin/parameters/:id` | admin | 修改參數 |
-| ❌ | 加分 | PATCH | `/admin/parameters/:id/active` | admin | 切換啟用/停用狀態（目前用 `PUT /admin/parameters/:id` 帶 `isActive` 替代） |
-| ✅ | 加分 | DELETE | `/admin/parameters/:id` | admin | 刪除參數（**軟刪除**，實際是把 `isActive` 設為 false） |
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/admin/parameters` | JWT + admin | 取得參數列表，可依 `type=role|contentType|category|model|tag` 篩選 |
+| POST | `/admin/parameters` | JWT + admin | 新增參數 |
+| PUT | `/admin/parameters/:id` | JWT + admin | 更新參數 |
+| DELETE | `/admin/parameters/:id` | JWT + admin | 軟刪除參數 |
 
 ### Admin Users
 
-| 完成 | 類型 | Method | Path | 權限 | 說明 |
-|---|---|---|---|---|---|
-| ✅ | 加分 | GET | `/admin/users` | admin | 取得會員清單，支援 `role` query（`member`／`admin`） |
-| ❌ | 加分 | POST | `/admin/users` | admin | 新增會員（目前共用前台 `POST /auth/register`） |
-| ✅ | 加分 | PUT | `/admin/users/:id` | admin | 修改會員資料（`name`／`role`／`isActive`） |
-| ❌ | 加分 | PATCH | `/admin/users/:id/active` | admin | 切換啟用/停用狀態（目前用 `PUT /admin/users/:id` 帶 `isActive` 替代） |
-| ❌ | 加分 | DELETE | `/admin/users/:id` | admin | 刪除會員 |
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/admin/users` | JWT + admin | 取得會員列表，可依 `role` 篩選 |
+| PUT | `/admin/users/:id` | JWT + admin | 更新會員資料、角色或啟用狀態 |
+
+### Admin Skills
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/admin/skills` | JWT + admin | 取得後台 Prompt/Skill 列表，支援 `keyword`、`contentTypeId`、`categoryId`、`active` query |
+| POST | `/admin/skills` | JWT + admin | 新增 Prompt/Skill |
+| GET | `/admin/skills/:id` | JWT + admin | 取得單筆 Prompt/Skill |
+| PUT | `/admin/skills/:id` | JWT + admin | 更新 Prompt/Skill |
+
+### Admin Agent Skills
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/admin/agent-skills` | JWT + admin | 取得後台 Agent Skill 列表，支援 `keyword`、`categoryId`、`active` query |
+| POST | `/admin/agent-skills` | JWT + admin | 新增 Agent Skill |
+| GET | `/admin/agent-skills/:id` | JWT + admin | 取得單一 Agent Skill |
+| PUT | `/admin/agent-skills/:id` | JWT + admin | 更新 Agent Skill |
+| PATCH | `/admin/agent-skills/:id/active` | JWT + admin | 切換 Agent Skill 啟用狀態 |
+
+### Admin Contacts
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/admin/contacts` | JWT + admin | 取得聯絡表單列表，支援 `status`、`keyword` query |
+| PATCH | `/admin/contacts/:id/status` | JWT + admin | 更新聯絡表單處理狀態 |
+| PUT | `/admin/contacts/:id/status` | JWT + admin | 更新聯絡表單處理狀態；與 PATCH 共用 handler |
+| DELETE | `/admin/contacts/:id` | JWT + admin | 刪除聯絡表單 |
+
+### Admin FAQs
+
+| Method | Path | 權限 | 說明 |
+|---|---|---|---|
+| GET | `/admin/faqs` | JWT + admin | 取得後台 FAQ 列表 |
+| POST | `/admin/faqs` | JWT + admin | 新增 FAQ |
+| GET | `/admin/faqs/:id` | JWT + admin | 取得單一 FAQ |
+| PUT | `/admin/faqs/:id` | JWT + admin | 更新 FAQ |
+| DELETE | `/admin/faqs/:id` | JWT + admin | 軟刪除／停用 FAQ |
+
+## Swagger / OpenAPI
+
+`app.js` 只有在 `swagger.enabled` 為 `true` 時才掛載下列文件路徑：
+
+| Method | Path | 說明 |
+|---|---|---|
+| GET | `/openapi.json` | OpenAPI JSON，`servers` URL 會依目前 request 動態產生 |
+| GET | `/docs` | Swagger UI |
+| GET | `/scalar` | Scalar API Reference |
+
+啟用與保護規則：
+
+- 環境中存在 `SWAGGER_ENABLED` 時，只有字串 `true` 會啟用；空字串也屬於已設定，因此會關閉。
+- 環境中完全不存在 `SWAGGER_ENABLED` key 時，非 production 預設啟用，production 預設關閉。
+- `SWAGGER_BASIC_AUTH_USER` 與 `SWAGGER_BASIC_AUTH_PASS` 兩者都有設定時，文件路徑才要求 HTTP Basic Auth；任一缺少則直接放行。
+- `docs/openapi/swagger-output.json` 是 generated snapshot，目前尚未涵蓋所有 mounted routes；實際 API 仍以 `src/routes/index.js` 與 route code 為準。
+- Route 或 Swagger annotation 異動並需要同步文件時，執行 `npm run swagger` 重新產生快照；產生器會載入目前 `NODE_ENV` 對應設定，production 模式仍需提供 production 必填環境變數。
 
 ## 認證方式
 
-Authorization Header 帶 Bearer JWT（無 cookie）。`POST /auth/login` 成功回傳 `{ status: 'success', token }`；`vertfyToken` middleware（`src/middlewares/authenticate.js`）驗證 token 合法後，把解碼出來的內容設進 `req.user`（含 `userId`、`email`、`role`），`/auth/logout`、`/auth/me` 都掛了這個 middleware。登入失敗（帳號不存在或密碼錯）統一回同一則「email 或密碼錯誤」，不透露帳號是否存在。角色權限用同檔案裡的 `isAdmin` middleware（檢查 `req.user.role === 'admin'`），所有 `/admin/*` 路由都疊加 `vertfyToken` + `isAdmin`。
+API 使用 `Authorization: Bearer <JWT>`，不使用 cookie。`POST /auth/login` 成功後回傳 token；`vertfyToken` middleware 驗證 token 並將 `userId`、`email`、`role` 等內容設到 `req.user`。
+
+管理端 routes 疊加 `vertfyToken` 與 `isAdmin`；`isAdmin` 會檢查 `req.user.role === 'admin'`。登入失敗時，帳號不存在與密碼錯誤共用同一則錯誤訊息，避免洩漏帳號是否存在。
 
 ## 環境變數
 
-`.env.example` 列出所有需要的 key（不含真實值）。實際使用時複製成對應的 `.env.{NODE_ENV}` 檔並填值：
+`.env.example` 是唯一納入版控的環境變數範本。開發或部署時，請建立對應的 `.env.{NODE_ENV}` 或由執行環境注入變數；不要提交真實密鑰。
 
-| Key | 說明 | 留空/不設定的效果 |
+| Key | 說明 | 未設定時的行為 |
 |---|---|---|
-| `NODE_ENV` | 執行環境（`development`/`test`/`production`），決定 `env.js` 要載入哪個 `.env.{NODE_ENV}` 檔 | 不設定時 `env.js` 預設當作 `development` |
-| `PORT` | Express server 監聽的 port | 預設 `3000` |
-| `JWT_SECRET` | 簽發/驗證 JWT 用的密鑰 | 未設定時 token 簽章會失敗；`production` 下 `env.js` 會直接 throw 不讓服務啟動 |
-| `DATABASE_URL` | PostgreSQL 連線字串，格式 `postgres://帳號:密碼@主機:port/資料庫名稱` | 留空 → 改用內嵌的 PGlite（見下方〈資料庫〉章節）；`production` 下留空會直接 throw，不會誤用 PGlite |
-| `GCP_PROJECT_ID` | GCP 專案 ID，`/utility/upload` 上傳檔案用 | 留空 → 上傳端點會失敗（其餘 API 不受影響） |
-| `GCP_CLIENT_EMAIL` | GCP service account 的 email | 同上 |
-| `GCP_PRIVATE_KEY` | GCP service account 的私鑰 | 同上 |
-| `GCP_BUCKET_NAME` | 上傳目標 Bucket 名稱 | 同上 |
+| `NODE_ENV` | 執行環境 | 預設 `development` |
+| `PORT` | HTTP server port | 預設 `3000` |
+| `JWT_SECRET` | JWT 簽發與驗證密鑰 | production process／指令載入設定時若缺少便中止 |
+| `DATABASE_URL` | PostgreSQL 連線字串 | 非 production 留空時使用 PGlite；production process／指令載入設定時若缺少便中止 |
+| `GCP_PROJECT_ID` | GCP project ID | 上傳功能無法正常使用 |
+| `GCP_CLIENT_EMAIL` | GCP service account email | 上傳功能無法正常使用 |
+| `GCP_PRIVATE_KEY` | GCP service account private key | 上傳功能無法正常使用 |
+| `GCP_BUCKET_NAME` | 上傳目標 Bucket | 上傳功能無法正常使用 |
+| `SWAGGER_ENABLED` | 是否掛載 Swagger/OpenAPI 文件 | key 不存在時依 `NODE_ENV` 決定；key 存在時只有 `true` 會啟用，空字串會關閉 |
+| `SWAGGER_BASIC_AUTH_USER` | Swagger Basic Auth 帳號 | 與密碼任一缺少時不啟用 Basic Auth |
+| `SWAGGER_BASIC_AUTH_PASS` | Swagger Basic Auth 密碼 | 與帳號任一缺少時不啟用 Basic Auth |
 
-> `.env.development` 與 `.env.production` 都被 `.gitignore` 排除，clone 下來後要自己從 `.env.example` 複製一份。目前 repo 裡的 `.env.development` 只有 `NODE_ENV`、`PORT`、`JWT_SECRET` 三個 key，沒有 `GCP_*`，所以本地跑 `/utility/upload` 會失敗 —— 要測上傳功能得自己補上這四個值。
+`GCP_PRIVATE_KEY` 可使用含 `\n` 的單行環境變數值；`upload.service.js` 初始化憑證時會將其轉回實際換行。
 
-## 開發與執行
+## 開發、測試與資料指令
 
-本地開發預設完全不需要 Docker：
+### 本地開發
 
 ```bash
-# 安裝套件
 npm install
 
-# 依 src/database/schema.sql 建立本地資料表（預設會建立內嵌的 PGlite 資料庫）
+# 依 schema.sql 建立資料表，未設定 DATABASE_URL 時使用 PGlite
 npm run dev:init
 
-# 建立種子資料：管理者（admin@example.com / Admin1234）、測試會員（member@example.com / Member1234）、參數表與 Prompt/Skill，已存在會自動略過
+# 建立基礎使用者、parameters、Prompt/Skill、FAQ 與預設收藏
 npm run dev:seed
 
-# 上面兩步也可以一次做完
+# dev:init + dev:seed
 npm run dev:setup
 
-# 啟動開發伺服器（NODE_ENV=development，讀 .env.development，檔案變動自動重啟）
+# 如需 Agent Skill 種子資料，另行執行
+npm run seed:skill
+
+# 啟動 development server，檔案變更時自動重啟
 npm run dev
 ```
 
-正式環境啟動用 `npm start`（`NODE_ENV=production`，讀 `.env.production`）。`env.js` 依 `NODE_ENV` 自動載入對應的 `.env.{NODE_ENV}` 檔，`npm run dev`/`npm start` 已經各自帶好對應的 `NODE_ENV`，不用手動切換。
+`dev:init`、`dev:seed`、`dev:setup` 與 `seed:skill` 不會自行覆寫 `NODE_ENV`，會沿用目前 shell 的值；本地操作前請確認不是 production。只有 `npm run dev` 會明確設定 `NODE_ENV=development`。
 
-想清空本地資料重新開始：
+### 常用 scripts
 
-```bash
-npm run dev:clear
-npm run dev:setup
-```
+以下列出 `package.json` 目前全部 12 個 scripts：
 
-改動路由後，記得重新產生 API 文件：
+| Script | 用途 |
+|---|---|
+| `npm start` | 以 `NODE_ENV=production` 啟動 server |
+| `npm run dev` | 以 `NODE_ENV=development` 啟動 watch server |
+| `npm test` | 執行 Vitest 測試 |
+| `npm run swagger` | 重新產生 `docs/openapi/swagger-output.json` |
+| `npm run dev:swagger-auth` | 以 production Swagger 設定與示範 Basic Auth 啟動 watch server；仍需 production 必填環境變數 |
+| `npm run dev:init` | 在目前資料庫套用 `schema.sql` |
+| `npm run dev:seed` | 建立基礎種子資料 |
+| `npm run dev:setup` | 依序執行 `dev:init` 與 `dev:seed` |
+| `npm run dev:clear` | 刪除本地 `.pglite-data` |
+| `npm run seed:skill` | 建立 Agent Skill 種子資料 |
+| `npm run db:migrate:prod` | 使用 production 環境執行 migration |
+| `npm run seed:skill:prod` | 使用 production 環境建立 Agent Skill 種子資料 |
 
-```bash
-npm run swagger
-```
+`dev:setup` 不包含 `seed:skill`。Agent Skill seed 應在 schema 與所需基礎資料建立後執行。`npm test` 只執行 Vitest 測試；`src/tests/read-favorites.js` 是手動查詢輔助腳本，不屬於 Vitest suite。
 
-啟動後可透過以下路徑查看/測試 API：
+## 資料庫：PGlite 與 PostgreSQL
 
-- `/openapi.json`：swagger-autogen 產生的 OpenAPI 3.0 規格
-- `/docs`：Swagger UI
-- `/scalar`：Scalar API Reference
+同一份 SQL 可在兩種後端執行，`src/database/db.js` 依 `DATABASE_URL` 是否存在切換：
 
-## 資料庫：本地用 PGlite、雲端用 PostgreSQL
-
-**一份程式碼、兩種後端，靠 `DATABASE_URL` 有沒有值來切換，不需要改任何 SQL。** 這個雙軌設計是刻意保留的：本地開發不必裝 Docker 或起任何資料庫服務，clone 下來 `npm install && npm run dev:setup` 就能跑；上雲端只要在環境變數填 `DATABASE_URL` 就會自動改走真正的 PostgreSQL。
-
-| | 本地開發 | 雲端 / 正式 |
+| | 本地預設 | PostgreSQL / production |
 |---|---|---|
-| `DATABASE_URL` | 留空 | 填雲端 PostgreSQL 連線字串 |
-| 實際後端 | 內嵌 PGlite（`@electric-sql/pglite`） | `pg.Pool` |
-| 資料存放 | `.pglite-data/{NODE_ENV}` 本機資料夾 | 雲端資料庫 |
-| 需要額外服務 | 不需要 | 需要 |
+| `DATABASE_URL` | 留空 | 提供 PostgreSQL 連線字串 |
+| Backend | PGlite | `pg.Pool` |
+| 資料位置 | `.pglite-data/{NODE_ENV}` | PostgreSQL server |
+| 額外服務 | 不需要 | 需要 PostgreSQL |
 
-`src/database/db.js` 的 `createBackend()` 做這個判斷，並在啟動時印出實際連到哪裡（密碼會遮蔽成 `****`）。兩種後端都支援 `query()` / `exec()` / `withTransaction()`；差別只在 transaction —— PostgreSQL 從 Pool 借一條 client 用完 `release()`，PGlite 則直接用同一個內嵌實例。
+兩種後端共用 `query()`、`exec()`、`withTransaction()`。Production 會驗證 `JWT_SECRET` 與 `DATABASE_URL`，缺少任一值即中止啟動，不會退回 PGlite。
 
-**上雲端後 PGlite 不會被誤用**：`src/config/env.js` 在 `NODE_ENV=production` 時會檢查 `JWT_SECRET`、`DATABASE_URL`，缺任一個就直接 throw 讓服務啟動失敗，不會安靜地退回空的內嵌資料庫。所以雲端環境「忘記設 DATABASE_URL 結果連到空的 PGlite」這種情況不會發生。
-
-目前 `npm test` 還沒帶 `NODE_ENV=test`、也還沒有獨立的 `.env.test`，跑測試時會沿用 `.env.development`（走同一份 `.pglite-data/development`）。
-
-想在本地改連 Docker PostgreSQL（例如上雲端前先驗證同一份 SQL 在真 PostgreSQL 上的行為），`docker-compose.yml` 已經寫好：
+若要使用 repository 內的 Docker PostgreSQL：
 
 ```bash
-docker compose up -d
-# 然後在 .env.development 填入 DATABASE_URL，再重跑 npm run dev:setup
+docker compose up -d --wait
+# container 通過 healthcheck 後，將開發環境的 DATABASE_URL 指向 localhost:5433 再套用 schema
+npm run dev:init
 ```
 
-目前的資料庫行為與可執行指令請以 [`src/database/db.js`](src/database/db.js)、[`src/database/migrate.js`](src/database/migrate.js)、[`src/database/schema.sql`](src/database/schema.sql) 與 [`package.json`](package.json) 為準。早期的 `psql` 操作示範與實作教學仍保留在 [`docs/archive/2026-08-15/dev-plan.md`](docs/archive/2026-08-15/dev-plan.md)，但其中的 scripts、schema 與測試步驟只代表當時狀態。
+`docker-compose.yml` 將 host `5433` 對應到 container `5432`。啟動 container 不會自動套用 schema，仍需執行 migration；production 則使用 `npm run db:migrate:prod`。
+
+目前資料庫行為與可執行指令請以 [`src/database/db.js`](src/database/db.js)、[`src/database/migrate.js`](src/database/migrate.js)、[`src/database/schema.sql`](src/database/schema.sql) 與 [`package.json`](package.json) 為準。早期教學保留在 [`docs/archive/2026-08-15/dev-plan.md`](docs/archive/2026-08-15/dev-plan.md)，其中的 scripts、schema 與測試步驟只代表封存當時的狀態。
