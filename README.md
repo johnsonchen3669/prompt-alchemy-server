@@ -208,7 +208,7 @@ prompt-alchemy-server/
 |---|---|---|---|
 | GET | `/prompts` | 公開 | 取得上架 Prompt 列表，支援 `category`、`tag`、`search` query |
 | GET | `/prompts/:id` | 公開 | 取得上架 Prompt 詳情 |
-| POST | `/prompts/:id/copy` | 公開 | 將 Prompt 的 `copy_count` 加 1 |
+| POST | `/prompts/:id/copy` | 公開 | 將 Prompt 的 `copyCount` 加 1 |
 
 ### Favorites
 
@@ -330,8 +330,9 @@ prompt-alchemy-server/
 - 環境中存在 `SWAGGER_ENABLED` 時，只有字串 `true` 會啟用；空字串也屬於已設定，因此會關閉。
 - 環境中完全不存在 `SWAGGER_ENABLED` key 時，非 production 預設啟用，production 預設關閉。
 - `SWAGGER_BASIC_AUTH_USER` 與 `SWAGGER_BASIC_AUTH_PASS` 兩者都有設定時，文件路徑才要求 HTTP Basic Auth；任一缺少則直接放行。
-- `docs/openapi/swagger-output.json` 是 generated snapshot，目前尚未涵蓋所有 mounted routes；實際 API 仍以 `src/routes/index.js` 與 route code 為準。
-- Route 或 Swagger annotation 異動並需要同步文件時，執行 `npm run swagger` 重新產生快照；產生器會載入目前 `NODE_ENV` 對應設定，production 模式仍需提供 production 必填環境變數。
+- `docs/openapi/swagger-output.json` 已與 16 個 mounted route modules 的 40 個 business paths／54 個 operations 同步；Swagger 自身的 `/openapi.json` 文件路徑不納入 business snapshot。
+- Route 或 swagger-autogen inline annotation 異動後，執行 `npm run swagger` 重新產生快照。產生器使用固定的 `http://localhost:3000` 且不載入環境設定；runtime 提供 `/openapi.json`、Swagger UI 與 Scalar 時，仍會依目前 request host／protocol 動態覆寫 `servers`。
+- 執行 `npm run swagger:check` 可驗證 route coverage、metadata、security、parameters、media types、local `$ref` 與 tracked snapshot 是否同步。
 
 ## 認證方式
 
@@ -386,7 +387,7 @@ npm run dev
 
 ### 常用 scripts
 
-以下列出 `package.json` 目前全部 12 個 scripts：
+以下列出 `package.json` 目前全部 13 個 scripts：
 
 | Script | 用途 |
 |---|---|
@@ -394,6 +395,7 @@ npm run dev
 | `npm run dev` | 以 `NODE_ENV=development` 啟動 watch server |
 | `npm test` | 執行 Vitest 測試 |
 | `npm run swagger` | 重新產生 `docs/openapi/swagger-output.json` |
+| `npm run swagger:check` | 驗證 Swagger/OpenAPI route 合約與 generated snapshot |
 | `npm run dev:swagger-auth` | 以 production Swagger 設定與示範 Basic Auth 啟動 watch server；仍需 production 必填環境變數 |
 | `npm run dev:init` | 在目前資料庫套用 `schema.sql` |
 | `npm run dev:seed` | 建立基礎種子資料 |
