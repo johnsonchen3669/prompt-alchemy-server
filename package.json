@@ -11,6 +11,7 @@
     "start": "cross-env NODE_ENV=production node server.js",
     "test": "vitest run",
     "swagger": "node src/config/swagger.js",
+    "swagger:check": "vitest run src/tests/swagger.contract.test.mjs",
     "dev": "cross-env NODE_ENV=development node --watch server.js",
     "dev:swagger-auth": "cross-env NODE_ENV=production SWAGGER_ENABLED=true SWAGGER_BASIC_AUTH_USER=admin SWAGGER_BASIC_AUTH_PASS=Admin1234 node --watch server.js",
     "dev:init": "node src/database/migrate.js",
