@@ -7,64 +7,68 @@ router.get(
   '/',
   /* #swagger.tags = ['Prompts']
      #swagger.summary = '取得上架中的 Prompt 列表'
-     #swagger.description = '前台會員與訪客瀏覽上架中 (isActive = true) 的 Prompt 列表，可搭配關鍵字搜尋、類別或標籤篩選。' */
+     #swagger.description = '前台會員與訪客瀏覽上架中的 Prompt，可搭配關鍵字搜尋、分類或標籤篩選。此端點不需要登入。'
+     #swagger.security = [] */
   /* #swagger.parameters['category'] = {
        in: 'query',
-       description: '分類 ID',
+       description: '分類 ID (UUID)',
        required: false,
-       type: 'string'
-  } */
-  /* #swagger.parameters['tag'] = {
+       '@schema': {
+         type: 'string',
+         format: 'uuid',
+         example: '550e8400-e29b-41d4-a716-446655440000'
+       }
+  }
+  #swagger.parameters['tag'] = {
        in: 'query',
-       description: '標籤 ID',
+       description: '標籤 ID (UUID)',
        required: false,
-       type: 'string'
-  } */
-  /* #swagger.parameters['search'] = {
+       '@schema': {
+         type: 'string',
+         format: 'uuid',
+         example: '6ba7b810-9dad-41d1-80b4-00c04fd430c8'
+       }
+  }
+  #swagger.parameters['search'] = {
        in: 'query',
-       description: '關鍵字搜尋 (標題、簡介或內容)',
+       description: '關鍵字搜尋（標題、簡介或內容）',
        required: false,
-       type: 'string'
+       '@schema': {
+         type: 'string',
+         example: 'API 審查'
+       }
   } */
   /* #swagger.responses[200] = {
        description: '成功取得 Prompt 列表',
        content: {
-         "application/json": {
+         'application/json': {
            schema: {
              type: 'object',
+             required: ['status', 'data'],
              properties: {
                status: { type: 'string', example: 'success' },
                data: {
                  type: 'array',
-                 items: {
-                   type: 'object',
-                   properties: {
-                     id: { type: 'string', format: 'uuid', example: 'd7c92002-1925-4c0a-8933-203a9a9ebf0b' },
-                     title: { type: 'string', example: '後端 API 審查' },
-                     slug: { type: 'string', example: 'backend-api-review' },
-                     intro: { type: 'string', example: '檢查 Express / Next.js API 的錯誤處理、安全性與回傳結構。' },
-                     contentTypeId: { type: 'string', example: '62891464-fb7e-4295-b544-a3b78936722b' },
-                     modelType: { type: 'array', items: { type: 'string' } },
-                     promptContent: { type: 'string', example: '請你扮演資深後端工程師...' },
-                     useCase: { type: 'string', example: '程式碼審查' },
-                     exampleInput: { type: 'string', example: 'router.post("/login", ...)' },
-                     exampleOutput: { type: 'array', items: { type: 'object' } },
-                     categoryId: { type: 'string', example: '5f40e0ac-86d0-4b9c-9573-351e9da96775' },
-                     category: { type: 'string', example: '後端開發' },
-                     tags: { type: 'array', items: { type: 'string' } },
-                     sourceUrl: { type: 'string', example: 'https://example.com' },
-                     copyCount: { type: 'integer', example: 125 },
-                     favoriteCount: { type: 'integer', example: 32 },
-                     isNew: { type: 'boolean', example: true },
-                     isHot: { type: 'boolean', example: true },
-                     isActive: { type: 'boolean', example: true },
-                     createdAt: { type: 'string', format: 'date-time' },
-                     updatedAt: { type: 'string', format: 'date-time' }
-                   }
-                 }
+                 items: { $ref: '#/components/schemas/Prompt' }
                }
              }
            }
+         }
+       }
+  }
+  #swagger.responses[400] = {
+       description: '分類 ID 格式錯誤',
+       content: {
+         'application/json': {
+           schema: { $ref: '#/components/schemas/ErrorResponse' }
+         }
+       }
+  }
+  #swagger.responses[500] = {
+       description: '伺服器發生未預期的錯誤',
+       content: {
+         'application/json': {
+           schema: { $ref: '#/components/schemas/ErrorResponse' }
          }
        }
   } */
@@ -75,40 +79,49 @@ router.get(
   '/:id',
   /* #swagger.tags = ['Prompts']
      #swagger.summary = '取得單一 Prompt 詳細內容'
-     #swagger.description = '前台會員與訪客點擊進入 Prompt 詳情頁時調用。' */
+     #swagger.description = '前台會員與訪客取得指定上架 Prompt 的完整內容。此端點不需要登入。'
+     #swagger.security = [] */
   /* #swagger.parameters['id'] = {
        in: 'path',
        description: 'Prompt ID (UUID)',
        required: true,
-       type: 'string'
+       '@schema': {
+         type: 'string',
+         format: 'uuid',
+         example: '550e8400-e29b-41d4-a716-446655440000'
+       }
   } */
   /* #swagger.responses[200] = {
        description: '成功取得 Prompt 詳情',
        content: {
-         "application/json": {
+         'application/json': {
            schema: {
              type: 'object',
+             required: ['status', 'data'],
              properties: {
                status: { type: 'string', example: 'success' },
-               data: {
-                 type: 'object',
-                 properties: {
-                   id: { type: 'string', format: 'uuid', example: 'd7c92002-1925-4c0a-8933-203a9a9ebf0b' },
-                   title: { type: 'string', example: '後端 API 審查' },
-                   slug: { type: 'string', example: 'backend-api-review' },
-                   intro: { type: 'string', example: '檢查 Express API 結構' },
-                   promptContent: { type: 'string', example: '請你扮演資深後端工程師...' },
-                   copyCount: { type: 'integer', example: 126 },
-                   favoriteCount: { type: 'integer', example: 32 },
-                   isActive: { type: 'boolean', example: true }
-                 }
-               }
+               data: { $ref: '#/components/schemas/Prompt' }
              }
            }
          }
        }
-    }
-    #swagger.responses[404] = { description: '找不到該 Prompt' } */
+  }
+  #swagger.responses[404] = {
+       description: '找不到該 Prompt',
+       content: {
+         'application/json': {
+           schema: { $ref: '#/components/schemas/ErrorResponse' }
+         }
+       }
+  }
+  #swagger.responses[500] = {
+       description: '伺服器發生未預期的錯誤',
+       content: {
+         'application/json': {
+           schema: { $ref: '#/components/schemas/ErrorResponse' }
+         }
+       }
+  } */
   promptController.getPromptById
 );
 
@@ -116,26 +129,33 @@ router.post(
   '/:id/copy',
   /* #swagger.tags = ['Prompts']
      #swagger.summary = '增加 Prompt 複製使用次數'
-     #swagger.description = '前台使用者點擊一鍵複製 Prompt 時觸發，自動在資料庫內將 copy_count 累加 1。' */
+     #swagger.description = '前台使用者複製 Prompt 時，將該 Prompt 的 API 欄位 copyCount 增加 1。此端點不需要登入。'
+     #swagger.security = [] */
   /* #swagger.parameters['id'] = {
        in: 'path',
        description: 'Prompt ID (UUID)',
        required: true,
-       type: 'string'
+       '@schema': {
+         type: 'string',
+         format: 'uuid',
+         example: '550e8400-e29b-41d4-a716-446655440000'
+       }
   } */
   /* #swagger.responses[200] = {
        description: '複製次數已累加',
        content: {
-         "application/json": {
+         'application/json': {
            schema: {
              type: 'object',
+             required: ['status', 'message', 'data'],
              properties: {
                status: { type: 'string', example: 'success' },
                message: { type: 'string', example: '複製次數已累加' },
                data: {
                  type: 'object',
+                 required: ['id', 'copyCount'],
                  properties: {
-                   id: { type: 'string', format: 'uuid', example: 'd7c92002-1925-4c0a-8933-203a9a9ebf0b' },
+                   id: { type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' },
                    copyCount: { type: 'integer', example: 126 }
                  }
                }
@@ -143,8 +163,23 @@ router.post(
            }
          }
        }
-    }
-    #swagger.responses[404] = { description: '找不到該 Prompt 或未上架' } */
+  }
+  #swagger.responses[404] = {
+       description: '找不到該 Prompt 或 Prompt 尚未上架',
+       content: {
+         'application/json': {
+           schema: { $ref: '#/components/schemas/ErrorResponse' }
+         }
+       }
+  }
+  #swagger.responses[500] = {
+       description: '伺服器發生未預期的錯誤',
+       content: {
+         'application/json': {
+           schema: { $ref: '#/components/schemas/ErrorResponse' }
+         }
+       }
+  } */
   promptController.incrementCopyCount
 );
 
