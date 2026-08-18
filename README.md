@@ -72,6 +72,8 @@ server.js
 
 `server.js` 負責啟動 HTTP server；`app.js` 組裝全域 middleware、應用 routes、條件式 Swagger、404 與錯誤處理；`src/routes/index.js` 是所有實際 API prefix 的集中掛載入口。
 
+系統採用以功能模組為單位的分層架構。HTTP 細節集中在 route／controller，業務規則集中在 service，SQL 集中在 repository；跨多張表的操作由 service 透過 `withTransaction()` 協調。這些層是責任邊界而非強制樣板，單純的 Health endpoint，以及部分 Auth／Admin 操作會直接呼叫所需的 repository。
+
 ### 目錄與關鍵實作
 
 ```text
@@ -91,7 +93,6 @@ prompt-alchemy-server/
 │   │   ├── schema.sql                          # 目前資料表 DDL
 │   │   ├── seed.js                             # 基礎使用者、參數、Prompt/Skill、FAQ 與預設收藏
 │   │   ├── seed_skill.js                       # Agent Skill 種子資料
-│   │   ├── docker-init/                        # 目前空目錄，沒有初始化 SQL
 │   │   └── repositories/
 │   │       ├── agent_skill.repository.js       # Agent Skill 公開查詢與後台管理
 │   │       ├── contact.repository.js           # 聯絡表單建立、查詢、狀態與刪除
@@ -113,15 +114,45 @@ prompt-alchemy-server/
 │   │   ├── skillInstallCommand.service.js      # Agent Skill／Recipe 共用安裝指令 builder
 │   │   ├── skillRecipe.service.js              # Recipe、Recipe Item 與批次安裝指令
 │   │   └── upload.service.js                   # GCP Cloud Storage 上傳
-│   ├── controllers/                            # HTTP request/response handlers；含前台與會員模組
-│   │   └── admin/                              # 管理後台 handlers
+│   ├── controllers/
+│   │   ├── agentSkill.controller.js            # Agent Skill 查詢、詳情、安裝指令與複製計數
+│   │   ├── auth.controller.js                  # 註冊、登入、登出與目前會員資料
+│   │   ├── contact.controller.js               # 公開聯絡表單送出
+│   │   ├── faq.controller.js                   # 公開 FAQ 查詢
+│   │   ├── favorite.controller.js              # 會員收藏查詢、切換、清除與預設值
+│   │   ├── health.controller.js                # 服務存活狀態
+│   │   ├── prompt.controller.js                # Prompt 查詢、詳情與複製計數
+│   │   ├── skillRecipe.controller.js           # Recipe、Recipe Item 與安裝指令
+│   │   ├── utility.controller.js               # 上傳檔案 request/response 處理
+│   │   └── admin/
+│   │       ├── agentSkill.controller.js        # 後台 Agent Skill CRUD
+│   │       ├── contact.controller.js           # 後台聯絡表單查詢、狀態與刪除
+│   │       ├── faq.controller.js               # 後台 FAQ CRUD 與軟刪除
+│   │       ├── parameter.controller.js         # 後台 Parameter CRUD
+│   │       ├── skill.controller.js             # 後台 Prompt／Skill Item CRUD
+│   │       └── user.controller.js              # 後台會員查詢、更新與刪除
 │   ├── routes/
-│   │   ├── index.js                            # 所有實際 route prefix 的掛載入口
-│   │   └── admin/                              # 管理後台 routes
+│   │   ├── index.js                            # 所有 route prefix 的集中掛載入口
+│   │   ├── agentSkill.routes.js                # /agent-skills
+│   │   ├── auth.routes.js                      # /auth
+│   │   ├── contact.routes.js                   # /contacts
+│   │   ├── faq.routes.js                       # /faqs
+│   │   ├── favorite.routes.js                  # /favorites
+│   │   ├── health.routes.js                    # /health
+│   │   ├── prompt.routes.js                    # /prompts
+│   │   ├── skillRecipe.routes.js               # /me/recipes
+│   │   ├── skillRecipeItem.routes.js           # /me/recipe-items
+│   │   ├── utility.routes.js                   # /utility
+│   │   └── admin/
+│   │       ├── agentSkill.routes.js            # /admin/agent-skills
+│   │       ├── contact.routes.js               # /admin/contacts
+│   │       ├── faq.routes.js                   # /admin/faqs
+│   │       ├── parameter.routes.js             # /admin/parameters
+│   │       ├── skill.routes.js                 # /admin/skills
+│   │       └── user.routes.js                  # /admin/users
 │   ├── scripts/
 │   │   └── updateAdmin.js                      # 一次性管理者更新腳本
-│   ├── tests/                                  # Vitest 測試與手動測試輔助檔案
-│   └── utils/                                  # 目前空目錄、尚未使用
+│   └── tests/                                  # Vitest 測試與手動測試輔助檔案
 ├── docs/
 │   ├── FRONTEND_API_SPEC.md                    # 前後端對接參考
 │   ├── adr/                                    # 架構決策紀錄
@@ -154,6 +185,68 @@ prompt-alchemy-server/
 | `database/db.js` | 統一提供 `query`、`exec`、`withTransaction`，依設定切換 PostgreSQL／PGlite |
 | External storage | `upload.service.js` 將檔案寫入 GCP Cloud Storage，不經 database |
 
+### 啟動與基礎設施
+
+```text
+npm start / npm run dev
+└── server.js
+    ├── 載入 app.js
+    └── listen(config.port)
+
+npm run dev:init / db:migrate:prod
+└── migrate.js → db.exec(schema.sql)
+
+npm run dev:seed
+└── seed.js → repositories / transaction
+```
+
+- `src/config/env.js` 是設定的單一入口：依 `NODE_ENV` 載入環境變數，輸出 server、JWT、database、GCP 與 Swagger 設定，並檢查 production 必填值。
+- `server.js` 只負責啟動程序；可測試的 Express 組裝保留在 `app.js`，測試不必真的監聽 port。
+- `app.js` 的 middleware 順序是 CORS → JSON parser → API routes → 條件式 API 文件 → 404 → 全域錯誤處理。順序會影響錯誤與路由的處理結果。
+- Swagger 開啟時提供 `/openapi.json`、`/docs` 與 `/scalar`，三者均由 `swaggerProtect.js` 套用 Basic Auth；正式環境預設關閉。
+
+### 認證與授權
+
+```text
+Authorization: Bearer <JWT>
+└── vertfyToken
+    ├── jwt.verify(token, JWT_SECRET)
+    └── req.user = decoded payload
+        └── isAdmin（後台路由）→ 檢查 role === "admin"
+```
+
+- 公開路由不套用 JWT middleware；會員路由使用 `vertfyToken`；後台路由依序使用 `vertfyToken` 與 `isAdmin`。
+- 登入由 `auth.controller.js` 驗證 bcrypt 密碼並簽發 7 日 JWT；伺服器不保存 session。
+- Logout 僅回傳成功訊息，不會建立 token denylist，因此已簽發的 JWT 會持續有效至到期。
+- Recipe、Favorite 等會員資料除了 JWT，還會在 service／repository 層以 `userId` 或 ownership query 限制資料範圍。
+
+### 資料庫與交易
+
+`src/database/db.js` 對上層提供一致的 `query()`、`exec()` 與 `withTransaction()`：
+
+| 條件 | Backend | 用途 |
+|---|---|---|
+| 有 `DATABASE_URL` | `pg.Pool` | 正式環境或外部 PostgreSQL |
+| 無 `DATABASE_URL` | PGlite，資料位於 `.pglite-data/<NODE_ENV>` | 本機開發與測試 |
+
+Backend 採惰性初始化，第一次查詢時才建立，後續共用同一實例。一般 repository 使用 `$1`、`$2` 參數化 SQL；`exec()` 只供 migration 套用多段 DDL。`withTransaction()` 在同一連線執行 `BEGIN`／`COMMIT`，失敗時 `ROLLBACK`，PostgreSQL client 最後會釋放回 pool。
+
+目前的資料關係可概括為：
+
+```text
+users
+├── favorite ──┬── skill_item（Prompt）
+│              └── agent_skill
+└── skill_recipe
+    └── skill_recipe_item ── favorite
+
+parameters ── 提供分類／標籤等參數資料
+faqs       ── 公開內容與後台維護
+contacts   ── 公開送出與後台處理
+```
+
+實際欄位、外鍵、索引與約束以 `src/database/schema.sql` 為準。Schema 目前包含 9 張表：`users`、`parameters`、`skill_item`、`agent_skill`、`favorite`、`skill_recipe`、`skill_recipe_item`、`faqs`、`contacts`。
+
 ### 主要模組資料流
 
 | 模組 | 主要執行鏈 | 權限 |
@@ -171,11 +264,12 @@ prompt-alchemy-server/
 
 一般分層不是所有 endpoint 的硬性規則：Auth register 由 `auth.service.js` 開啟 transaction，跨 `user.repository.js`、`favorite.service.js` 與 `skillRecipe.service.js` 建立會員及預設資料；Auth login／me 直接使用 `user.repository.js`，其中 login 的 bcrypt 驗證與 JWT 簽發位於 controller，logout 只回傳成功訊息而不撤銷既有 JWT。Admin Prompts 與 Admin Agent Skills 直接使用 repository 並重用對應 service 的 API mapper；Admin Users 直接使用 `user.repository.js`；Health 不經 service／repository。`skillInstallCommand.service.js` 是 Agent Skill 與 Recipe 共用的純指令 builder，不存取 database；需要 transaction 的 Favorites 操作也由 service 開啟後再呼叫 repository。
 
-### 空檔與空目錄
+### 外部儲存、錯誤處理與測試邊界
 
-目前 `src/` 沒有空檔；空目錄只有 `src/database/docker-init/` 與 `src/utils/`。
-
-`src/database/schema.sql` 目前包含 9 張表：`users`、`parameters`、`skill_item`、`agent_skill`、`favorite`、`skill_recipe`、`skill_recipe_item`、`faqs`、`contacts`。各表主鍵設計不同，例如 `favorite.id` 使用 BIGINT identity，`skill_recipe_item` 使用複合主鍵；欄位型別請直接以 schema 為準。
+- 上傳流程由 `utility.routes.js` 的記憶體型 multer 接收檔案，再交給 `upload.service.js` 寫入 GCP Cloud Storage；檔案本體不寫入 PostgreSQL／PGlite。
+- Controller 與 service 可將錯誤交給 `errorHandler.js`，統一處理 JSON parse、multer、常見 PostgreSQL SQLSTATE、自訂 4xx 與未預期 500；未知 server error 只在伺服器端記錄細節。
+- API response 的欄位命名轉換由各 service mapper 負責，repository 保持接近資料庫欄位與 SQL 操作。
+- `src/tests/` 依 controller、service、repository、middleware、環境設定、上傳及 Swagger contract 分層測試；測試可替換下層依賴，避免每個單元測試都啟動完整 server。
 
 ## API 路由
 
