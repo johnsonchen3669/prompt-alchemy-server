@@ -1400,6 +1400,40 @@ const SEED_AGENT_SKILLS = [
     installKind: 'single_kit',
     supportedAgents: ['codex', 'claude-code', 'cursor'],
     docUrl: 'https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/using-agent-skills/SKILL.md',
+  },
+  {
+    name: 'hex-skill-lab',
+    description:
+      '給學生練習寫 AI Skill 的練習包，共 9 個範本：人設、飲食紀錄分析、覆盤、skill 寫作指南、agent 分工、CSV 報表、Calendar 排程、路線規劃、Chrome MCP 瀏覽器自動化，循序帶你把一次性的 prompt 整理成可重複使用的工作流程。',
+    repoOwner: 'gonsakon',
+    repoName: 'hex-skill-lab',
+    skillSlug: '*',
+    creatorName: 'gonsakon',
+    creatorAvatarUrl: 'https://avatars.githubusercontent.com/u/2187968?v=4',
+    creatorProfileUrl: 'https://github.com/gonsakon',
+    license: null,
+    categoryName: CATEGORY_LEARNING,
+    stargazersCount: 5,
+    installKind: 'full_package',
+    supportedAgents: ['codex', 'claude-code', 'cursor'],
+    docUrl: 'https://raw.githubusercontent.com/gonsakon/hex-skill-lab/main/README.md',
+  },
+  {
+    name: 'sprite-generator',
+    description:
+      '引導式的 Codex skill，用於生成與改繪像素風 Sprite Sheet：可保留原 Sprite Sheet 的風格逐格重繪，或以參考圖風格生成整張 sheet 後再做確定性的清理與重建，過程中會停下來讓使用者審閱每個階段。',
+    repoOwner: 'ChouChouHu',
+    repoName: 'sprite-generator',
+    skillSlug: 'sprite-generator',
+    creatorName: 'ChouChouHu',
+    creatorAvatarUrl: 'https://avatars.githubusercontent.com/u/10724255?v=4',
+    creatorProfileUrl: 'https://github.com/ChouChouHu',
+    license: 'MIT',
+    categoryName: CATEGORY_TOOL,
+    stargazersCount: 2,
+    installKind: 'git_clone',
+    supportedAgents: [],
+    docUrl: 'https://raw.githubusercontent.com/ChouChouHu/sprite-generator/main/README.md',
   }
 ];
 
